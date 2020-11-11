@@ -13,18 +13,18 @@ import quip
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s %(levelname)s %(name)s %(filename)s:%(lineno)d {%(message)s}')
+    format='%(asctime)s %(levelname)s %(name)s %(filename)s:%(lineno)d %(message)s')
 
 def download(fund_code):
     """get a list of recent worth including today's"""
     # 1. get the history daily price
     url = 'http://fund.eastmoney.com/pingzhongdata/{0}.js?v={1}'.format(fund_code, time.strftime("%Y%m%d%H%M%S", time.localtime()))
-    logging.info('url1: {0}'.format(url))
     r = requests.get(url)
     assert r.status_code == 200
     jsContent = execjs.compile(r.text)
     name = jsContent.eval('fS_name')
-    logging.info('fund name: {0}'.format(name))
+    logging.info('{0}:{1}'.format(name, fund_code))
+    logging.info('url1: {0}'.format(url))
     ACWorthTrend = jsContent.eval('Data_ACWorthTrend')
     worth = [w for t,w in ACWorthTrend]
 
@@ -78,7 +78,6 @@ def main(codes):
     logging.info('+++++BEGIN+++++')
     msgs = []
     for fund_code in codes:
-        logging.info('fund code: {0}'.format(fund_code))
         try:
             name, worth = download(fund_code)
             msgs.append('{0} ({1}):{2}'.format(name, fund_code, high_or_low(worth)))

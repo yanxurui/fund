@@ -23,7 +23,7 @@ def download(fund_code):
     assert r.status_code == 200
     jsContent = execjs.compile(r.text)
     name = jsContent.eval('fS_name')
-    logging.info('{0}:{1}'.format(name, fund_code))
+    logging.info('{0}:{1}'.format(fund_code, name))
     logging.info('url1: {0}'.format(url))
     ACWorthTrend = jsContent.eval('Data_ACWorthTrend')
     worth = [w for t,w in ACWorthTrend]
@@ -76,13 +76,18 @@ def high_or_low(worth):
 
 def main(codes):
     logging.info('+++++BEGIN+++++')
-    msgs = []
+    d = {}
     for fund_code in codes:
         try:
             name, worth = download(fund_code)
-            msgs.append('{0} ({1}):{2}'.format(name, fund_code, high_or_low(worth)))
+            # current price is higher than the past N days
+            N = high_or_low(worth)
+            k = '{0} ({1})'.format(name, fund_code)
+            d[k] = N
         except:
-            traceback.print_exc() 
+            traceback.print_exc()
+    # sort by value
+    msgs = ['{0}: {1}'.format(k, v) for k, v in sorted(x.items(), key=lambda item: -item[1])]
     send_notification('\n'.join(msgs))
 
 

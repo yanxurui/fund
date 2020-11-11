@@ -47,12 +47,12 @@ def download(fund_code):
     return name, worth
 
 def send_notification(msg):
-    logging.info(msg)
-    return
     """send notifiation via quip"""
+    logging.info(msg)
+    # return
     client = quip.QuipClient(access_token="YURJQU1BaGJSQ0g=|1635522342|nvZ5YsJ03DDUrt8b5b7hKbIJ2/0L7dBS41GfEWZZ6rI=")
     # user = client.get_authenticated_user()
-    r = client.new_message(thread_id='XPdAAAdjxIV', content="Hello world from python in 2020!")
+    r = client.new_message(thread_id='XPdAAAdjxIV', content=msg)
 
 def high_or_low(worth):
     """returns N which indicates the current price is higher (+) or lower (-) than the past N days (exclusively)"""
@@ -75,12 +75,13 @@ def high_or_low(worth):
     return N
 
 def main(codes):
+    logging.info('+++++BEGIN+++++')
     msgs = []
     for fund_code in codes:
         logging.info('fund code: {0}'.format(fund_code))
         try:
             name, worth = download(fund_code)
-            msgs.append('{0}:{1}'.format(name, high_or_low(worth)))
+            msgs.append('{0} ({1}):{2}'.format(name, fund_code, high_or_low(worth)))
         except:
             traceback.print_exc() 
     send_notification('\n'.join(msgs))
@@ -101,8 +102,14 @@ class MyTest(unittest.TestCase):
 
 if __name__ == '__main__':
     codes = [
-        '270042', # 广发纳斯达克100
-        '008903', # 广发科技先锋混合
         '000961', # 天虹沪深300ETF联接A
+        '270042', # 广发纳斯达克100
+        '164906', # 交银中证海外中国互联网指数
+        '008903', # 广发科技先锋混合
+        '001410', # 信达澳银新能源产业
+        '001595', # 天弘中证银行指数C
+        '161725', # 招商中证白酒指数分级
+        '320007', # 诺安成长混合
+        '502056', # 广发中证医疗指数
     ]
     main(codes)

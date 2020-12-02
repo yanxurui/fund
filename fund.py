@@ -20,14 +20,22 @@ def send_notification(msg):
     """send notifiation via quip"""
     client = quip.QuipClient(
         access_token="YURJQU1BaGJSQ0g=|1635522342|nvZ5YsJ03DDUrt8b5b7hKbIJ2/0L7dBS41GfEWZZ6rI=")
-    r = client.new_message(thread_id='XPdAAAdjxIV', content=msg)
+    r = client.new_message(thread_id='XWWAAAszoRa', content=msg)
 
 class Fund:
     IsTrading = False
 
     def __init__(self, fund_code):
         self.fund_code = fund_code
-        self.name, self.worth = self.download(fund_code)
+        retry = 1
+        while retry >= 0:
+            try:
+                self.name, self.worth = self.download(fund_code)
+                break
+            except:
+                logging.error('failed to get fund {0}'.format(fund_code))
+                traceback.print_exc()
+                retry -= 1
         # current price is higher than the past N days
         self.N = self.high_or_low(self.worth)
 
@@ -107,6 +115,7 @@ def main(codes):
                 break
         except:
             traceback.print_exc()
+            d[fund_code] = 'error'
     # sort by value
     msgs = ['{0}: {1}'.format(k, v) for k, v in sorted(d.items(), key=lambda item: -item[1])]
     output = '\n'.join(msgs)
@@ -177,6 +186,8 @@ if __name__ == '__main__':
         '008087', # 华夏中证5G通信主题ETF
         '260108', # 景顺长城新兴成长混合
         '006751', # 富国互联科技股票
+        '161005', # 富国天惠成长混合A
         '001102', # 前海开源国家
+        '001668', # 汇添富全球互联混合
     ]
     main(codes)

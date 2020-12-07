@@ -45,7 +45,7 @@ class Fund:
         # 1. get the history daily price
         url = 'http://fund.eastmoney.com/pingzhongdata/{0}.js?v={1}'.format(
             fund_code, time.strftime("%Y%m%d%H%M%S", time.localtime()))
-        r = requests.get(url)
+        r = requests.get(url, timeout=10)
         assert r.status_code == 200
         jsContent = execjs.compile(r.text)
         name = jsContent.eval('fS_name')
@@ -58,7 +58,7 @@ class Fund:
         url = 'http://fundgz.1234567.com.cn/js/{0}.js?rt={1}'.format(
             fund_code, int(time.time()*1000))
         logging.info('url2: {0}'.format(url))
-        r = requests.get(url)
+        r = requests.get(url, timeout=10)
         assert r.status_code == 200
         rate = cls.parse_current_rate(r.text)
         if rate is not None:

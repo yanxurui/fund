@@ -21,6 +21,7 @@ def send_notification(msg):
     client = quip.QuipClient(
         access_token="YURJQU1BaGJSQ0g=|1635522342|nvZ5YsJ03DDUrt8b5b7hKbIJ2/0L7dBS41GfEWZZ6rI=")
     r = client.new_message(thread_id='XWWAAAszoRa', content=msg)
+    logging.info('notifiation sent')
 
 class Fund:
     IsTrading = False
@@ -33,8 +34,7 @@ class Fund:
                 self.name, self.worth = self.download(fund_code)
                 break
             except:
-                logging.error('failed to get fund {0}'.format(fund_code))
-                traceback.print_exc()
+                logging.exception('failed to download data for fund {0}'.format(fund_code))
                 retry -= 1
         # current price is higher than the past N days
         self.N = self.high_or_low(self.worth)
@@ -103,25 +103,30 @@ class Fund:
         return N
 
 def main(codes):
-    logging.info('+++++BEGIN+++++')
+    TEST = os.getenv('TEST')
+    start = time.time()
+    logging.info('-'*50)
     d = {}
     for fund_code in codes:
         try:
             fund = Fund(fund_code)
             k = '{0} ({1})'.format(fund.name[:10], fund.fund_code)
             d[k] = fund.N
-            if os.getenv('TEST'):
+            if TEST:
                 logging.info('TEST mode')
                 break
         except:
-            traceback.print_exc()
-            d[fund_code] = 'error'
+            logging.exception('failed to get fund {0}'.format(fund_code))
     # sort by value
     msgs = ['{0}: {1}'.format(k, v) for k, v in sorted(d.items(), key=lambda item: -item[1])]
     output = '\n'.join(msgs)
     logging.info(output)
-    if Fund.IsTrading:
+    if Fund.IsTrading and not TEST:
         send_notification(output)
+    else:
+        logging.info('Skip sending notification')
+    end = time.time()
+    logging.info('Finishied in {0:.2f} seconds'.format(end - start))
 
 
 class MyTest(unittest.TestCase):
@@ -193,6 +198,7 @@ if __name__ == '__main__':
         '003494', # 富国天惠成长混合C
         '001102', # 前海开源国家
         '001668', # 汇添富全球互联混合
+        '010789', # 汇添富恒生指数
         '004241', # 中欧时代先锋
     ]
     main(codes)

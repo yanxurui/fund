@@ -28,7 +28,7 @@ class Fund:
 
     def __init__(self, fund_code):
         self.fund_code = fund_code
-        retry = 1
+        retry = 1 # retry only 1 time
         while retry >= 0:
             try:
                 self.name, self.worth = self.download(fund_code)
@@ -107,6 +107,7 @@ def main(codes):
     start = time.time()
     logging.info('-'*50)
     d = {}
+    failed = []
     for fund_code in codes:
         try:
             fund = Fund(fund_code)
@@ -117,8 +118,11 @@ def main(codes):
                 break
         except:
             logging.exception('failed to get fund {0}'.format(fund_code))
+            failed.append(fund_code)
     # sort by value
     msgs = ['{0}: {1}'.format(k, v) for k, v in sorted(d.items(), key=lambda item: -item[1])]
+    if failed:
+        msgs.append('Error: ' + ','.join(failed))
     output = '\n'.join(msgs)
     logging.info(output)
     if Fund.IsTrading and not TEST:

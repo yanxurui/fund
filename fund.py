@@ -21,7 +21,7 @@ def send_notification(msg):
     client = quip.QuipClient(
         access_token="YURJQU1BaGJSQ0g=|1635522342|nvZ5YsJ03DDUrt8b5b7hKbIJ2/0L7dBS41GfEWZZ6rI=")
     r = client.new_message(thread_id='XWWAAAszoRa', content=msg)
-    logging.info('notifiation sent')
+    logging.info('notification sent')
 
 class Fund:
     IsTrading = False
@@ -43,8 +43,7 @@ class Fund:
     def download(cls, fund_code):
         """get historical daily prices including today's if available"""
         # 1. get the history daily price
-        url = 'http://fund.eastmoney.com/pingzhongdata/{0}.js?v={1}'.format(
-            fund_code, time.strftime("%Y%m%d%H%M%S", time.localtime()))
+        url = 'http://fund.eastmoney.com/pingzhongdata/{0}.js'.format(fund_code)
         r = requests.get(url, timeout=10)
         assert r.status_code == 200
         jsContent = execjs.compile(r.text)
@@ -55,8 +54,7 @@ class Fund:
         worth = [w for t,w in ACWorthTrend]
 
         # 2. get today's real-time price
-        url = 'http://fundgz.1234567.com.cn/js/{0}.js?rt={1}'.format(
-            fund_code, int(time.time()*1000))
+        url = 'http://fundgz.1234567.com.cn/js/{0}.js'.format(fund_code)
         logging.info('url2: {0}'.format(url))
         r = requests.get(url, timeout=10)
         assert r.status_code == 200
@@ -79,6 +77,11 @@ class Fund:
                 return float(rate_match.group(1))
             else:
                 logging.warning('real-time price is not available: {0}'.format(dt_str))
+        # there are 2 cases:
+        # 1. QDII
+        # 2. NOT QDII
+        #   a) on a non-trading day, the value of the last trading day has been updated
+        #   b) on a trading day but after 15:00, today's value has probably not been updated yet. BUG: This is misleading.
         return None
 
     @staticmethod

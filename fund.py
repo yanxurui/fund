@@ -11,10 +11,11 @@ import execjs
 import requests
 import quip
 
+MAX = 100000
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)s %(name)s %(filename)s:%(lineno)d %(message)s')
-
 
 def send_notification(msg):
     """send notifiation via quip"""
@@ -103,6 +104,9 @@ class Fund:
                 N = -i
             else:
                 break
+        # return MAX when it reaches the highest in history
+        if N == len(worth) - 1:
+            N = MAX
         return N
 
 def main(codes):
@@ -123,9 +127,10 @@ def main(codes):
             logging.exception('failed to get fund {0}'.format(fund_code))
             failed.append(fund_code)
     # sort by value
-    msgs = ['{0}: {1}'.format(k, v) for k, v in sorted(d.items(), key=lambda item: -item[1])]
+    msgs = ['{0}: {1}'.format(k, 'MAX' if v == MAX else v) \
+        for k, v in sorted(d.items(), key=lambda item: -item[1])]
     if failed:
-        msgs.append('Error: ' + ','.join(failed))
+        msgs.append('Failed: ' + ','.join(failed))
     output = '\n'.join(msgs)
     logging.info(output)
     if Fund.IsTrading and not TEST:
@@ -181,11 +186,11 @@ if __name__ == '__main__':
         '001557', # 天弘中证500指数增强
         '001593', # 天弘创业板ETF
         '001595', # 天弘中证银行指数C
+        '008591', # 天弘中证全指证券公司指数C
         '004746', # 易方达上证50指数
         '005827', # 易方达蓝筹精选混合
         '110022', # 易方达消费行业股票
         '110011', # 易方达中小盘混合
-        '502010', # 易方达中证全指证券公司指数
         '002963', # 易方达黄金ETF联接C
         '270042', # 广发纳斯达克100
         '008903', # 广发科技先锋混合

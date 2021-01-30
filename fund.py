@@ -28,7 +28,12 @@ class Fund:
     IsTrading = False
 
     def __init__(self, fund_code):
-        self.fund_code = fund_code
+        self.fund_code = fund_code # 基金代码
+        self.name = '' # 基金名字
+        self.worth = [] # 历史累计净值
+        self.N = 0 # 正数代表比过去N个交易日价格高，负数代表过去N个交易日价格低
+        self.sell = False # 是否减仓
+
         retry = 1 # retry only 1 time
         while retry >= 0:
             try:
@@ -39,6 +44,21 @@ class Fund:
                 retry -= 1
         # current price is higher than the past N days
         self.N = self.high_or_low(self.worth)
+        # return MAX when it reaches the highest in history
+        if self.N == len(self.worth) - 1:
+            self.N = MAX
+        # 创历史新高后下跌则减仓
+        if max(self.worth) == self.worth[-2]:
+            self.sell = True
+
+    def __str__(self):
+        """convert self to str"""
+        k = '{0}({1})'.format(self.name[:10], self.fund_code)
+        v = 'MAX' if self.N == MAX else str(self.N)
+        if self.sell:
+            v += '👎'
+        return '{0}: {1}'.format(k, v)
+
 
     @classmethod
     def download(cls, fund_code):
@@ -104,37 +124,33 @@ class Fund:
                 N = -i
             else:
                 break
-        # return MAX when it reaches the highest in history
-        if N == len(worth) - 1:
-            N = MAX
         return N
 
 def main(codes):
     TEST = os.getenv('TEST')
     start = time.time()
     logging.info('-'*50)
-    d = {}
+    success = []
     failed = []
     for fund_code in codes:
         try:
             fund = Fund(fund_code)
-            k = '{0} ({1})'.format(fund.name[:10], fund.fund_code)
-            d[k] = fund.N
+            success.append(fund)
             if TEST:
                 logging.info('TEST mode')
                 break
         except:
             logging.exception('failed to get fund {0}'.format(fund_code))
             failed.append(fund_code)
-    # sort by value
-    msgs = ['{0}: {1}'.format(k, 'MAX' if v == MAX else v) \
-        for k, v in sorted(d.items(), key=lambda item: -item[1])]
+    # sort by N in place
+    success.sort(key=lambda x: x.N, reverse=True)
+    lines = list(map(str, success))
     if failed:
-        msgs.append('Failed: ' + ','.join(failed))
-    output = '\n'.join(msgs)
-    logging.info(output)
+        lines.append('Failed: ' + ','.join(failed))
+    msg = '\n'.join(lines)
+    logging.info(msg)
     if Fund.IsTrading and not TEST:
-        send_notification(output)
+        send_notification(msg)
     else:
         logging.info('Skip sending notification')
     end = time.time()

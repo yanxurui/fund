@@ -11,6 +11,8 @@ import execjs
 import requests
 import quip
 
+import CONFIG
+
 MAX = 100000
 
 logging.basicConfig(
@@ -19,8 +21,7 @@ logging.basicConfig(
 
 def send_notification(msg):
     """send notifiation via quip"""
-    client = quip.QuipClient(
-        access_token="YURJQU1BaGJSQ0g=|1635522342|nvZ5YsJ03DDUrt8b5b7hKbIJ2/0L7dBS41GfEWZZ6rI=")
+    client = quip.QuipClient(access_token=CONFIG.QUIP_TOKEN)
     r = client.new_message(thread_id='XWWAAAszoRa', content=msg)
     logging.info('notification sent')
 
@@ -56,8 +57,8 @@ class Fund:
         k = '{0}({1})'.format(self.name[:10], self.fund_code)
         v = 'MAX' if self.N == MAX else str(self.N)
         if self.sell:
-            v += '👎'
-        return '{0}: {1}'.format(k, v)
+            v += '🅢'
+        return '{0}:{1}'.format(k, v)
 
 
     @classmethod
@@ -127,6 +128,7 @@ class Fund:
         return N
 
 def main(codes):
+    '''codes是关注的基金代码的列表'''
     TEST = os.getenv('TEST')
     start = time.time()
     logging.info('-'*50)
@@ -208,13 +210,14 @@ if __name__ == '__main__':
         '110022', # 易方达消费行业股票
         '110011', # 易方达中小盘混合
         '002963', # 易方达黄金ETF联接C
+        '006328', # 易方达中证海外中国互联网50ETF
+        '011609', # 易方达科创板50ETF
         '270042', # 广发纳斯达克100
         '008903', # 广发科技先锋混合
         '502056', # 广发中证医疗指数
         '004997', # 广发高端制造股票A
         '004753', # 广发中证传媒ETF联接C
         '161725', # 招商中证白酒指数分级
-        '001410', # 信达澳银新能源产业
         '005572', # 中银证券新能源混合C
         '320007', # 诺安成长混合
         '161903', # 万家行业优选混合
@@ -228,5 +231,7 @@ if __name__ == '__main__':
         '001668', # 汇添富全球互联混合
         '010789', # 汇添富恒生指数
         '004241', # 中欧时代先锋
+        '163402', # 兴全趋势投资混合
+        '378006', # 上投摩根全球新兴市场
     ]
     main(codes)

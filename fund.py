@@ -1,7 +1,5 @@
 # -*- coding: UTF-8 -*-
-import os
 import re
-import time
 import unittest
 import traceback
 import logging
@@ -9,57 +7,50 @@ from datetime import datetime
 
 import execjs
 import requests
-import quip
-
-import CONFIG
-
-MAX = 100000
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s %(name)s %(filename)s:%(lineno)d %(message)s')
-
-def send_notification(msg):
-    """send notifiation via quip"""
-    client = quip.QuipClient(access_token=CONFIG.QUIP_TOKEN)
-    r = client.new_message(thread_id='XWWAAAszoRa', content=msg)
-    logging.info('notification sent')
 
 class Fund:
-    IsTrading = False
+    IsTrading = False # 是否是交易时间，只要任意基金在交易，该值将被设为True
 
     def __init__(self, fund_code):
+        """
+        declear all instance members here even though it's not required by syntax
+        """
         self.fund_code = fund_code # 基金代码
         self.name = '' # 基金名字
         self.worth = [] # 历史累计净值
-        self.N = 0 # 正数代表比过去N个交易日价格高，负数代表过去N个交易日价格低
-        self.sell = False # 是否减仓
-
-        retry = 1 # retry only 1 time
-        while retry >= 0:
-            try:
-                self.name, self.worth = self.download(fund_code)
-                break
-            except:
-                logging.exception('failed to download data for fund {0}'.format(fund_code))
-                retry -= 1
-        # current price is higher than the past N days
-        self.N = self.high_or_low(self.worth)
-        # return MAX when it reaches the highest in history
-        if self.N == len(self.worth) - 1:
-            self.N = MAX
-        # 创历史新高后下跌则减仓
-        if max(self.worth) == self.worth[-2]:
-            self.sell = True
+        self.N = 0 # 记录策略方法buy_or_sell的输出，正数表示买入的金额，负数表示卖出
 
     def __str__(self):
         """convert self to str"""
         k = '{0}({1})'.format(self.name[:10], self.fund_code)
-        v = 'MAX' if self.N == MAX else str(self.N)
-        if self.sell:
-            v += '🅢'
+        v = str(self.N)
         return '{0}:{1}'.format(k, v)
 
+    def buy_or_sell(self, worth):
+        """
+        worth是历史上每天的累计净值，worth[-1]是当前的估值。
+        输出N表示买入或卖出（用负数表示）的金额。
+        默认行为类似于定投，永不止盈。
+        用你自己的策略覆盖这个方法。
+        """
+        return 1
+
+    def trade(self):
+        # download
+        retry = 1 # retry only once
+        while retry >= 0:
+            try:
+                self.name, self.worth = self.download(self.fund_code)
+                break
+            except:
+                logging.exception('failed to download data for fund {0}'.format(fund_code))
+                retry -= 1
+                if retry < 0:
+                    raise
+        
+        # run the strategy
+        self.N = self.buy_or_sell(self.worth)
+        return self.N
 
     @classmethod
     def download(cls, fund_code):
@@ -106,72 +97,7 @@ class Fund:
         #   b) on a trading day but after 15:00, today's value has probably not been updated yet. BUG: This is misleading.
         return None
 
-    @staticmethod
-    def high_or_low(worth):
-        """returns N which indicates the current price is higher (+) or lower (-) than the past N days (exclusively)"""
-        N = 0
-        # empty or None
-        if not worth:
-            return 0
-        worth = worth[::-1]
-        current = worth[0]
-        for i in range(1, len(worth)):
-            if current > worth[i]:
-                N = i
-            else:
-                break
-        for i in range(1, len(worth)):
-            if current < worth[i]:
-                N = -i
-            else:
-                break
-        return N
-
-def main(codes):
-    '''codes是关注的基金代码的列表'''
-    TEST = os.getenv('TEST')
-    start = time.time()
-    logging.info('-'*50)
-    success = []
-    failed = []
-    for fund_code in codes:
-        try:
-            fund = Fund(fund_code)
-            success.append(fund)
-            if TEST:
-                logging.info('TEST mode')
-                break
-        except:
-            logging.exception('failed to get fund {0}'.format(fund_code))
-            failed.append(fund_code)
-    # sort by N in place
-    success.sort(key=lambda x: x.N, reverse=True)
-    lines = list(map(str, success))
-    if failed:
-        lines.append('Failed: ' + ','.join(failed))
-    msg = '\n'.join(lines)
-    logging.info(msg)
-    if Fund.IsTrading and not TEST:
-        send_notification(msg)
-    else:
-        logging.info('Skip sending notification')
-    end = time.time()
-    logging.info('Finishied in {0:.2f} seconds'.format(end - start))
-
-
-class MyTest(unittest.TestCase):
-    def test_high_or_low(self):
-        high_or_low = Fund.high_or_low
-        self.assertEqual(0, high_or_low([]))
-        self.assertEqual(0, high_or_low([1]))
-        self.assertEqual(1, high_or_low([1, 2]))
-        self.assertEqual(0, high_or_low([1, 2, 2]))
-        self.assertEqual(2, high_or_low([1, 2, 3]))
-        self.assertEqual(2, high_or_low([4, 1, 2, 3]))
-        self.assertEqual(-1, high_or_low([2, 1]))
-        self.assertEqual(0, high_or_low([2, 1, 1]))
-        self.assertEqual(-2, high_or_low([1, 3, 2, 1]))
-
+class TestFund(unittest.TestCase):
     def test_parse_current(self):
         parse_current_rate = Fund.parse_current_rate
         # a normal case
@@ -197,41 +123,3 @@ class MyTest(unittest.TestCase):
         sample = 'jsonpgz({"gszzl":"-0.1","gztime":"%s 14:40"});' % date
         self.assertEqual(-0.1, parse_current_rate(sample))
 
-
-if __name__ == '__main__':
-    codes = [
-        '000961', # 天弘沪深300ETF联接A
-        '001557', # 天弘中证500指数增强
-        '001593', # 天弘创业板ETF
-        '001595', # 天弘中证银行指数C
-        '008591', # 天弘中证全指证券公司指数C
-        '004746', # 易方达上证50指数
-        '005827', # 易方达蓝筹精选混合
-        '110022', # 易方达消费行业股票
-        '110011', # 易方达中小盘混合
-        '002963', # 易方达黄金ETF联接C
-        '006328', # 易方达中证海外中国互联网50ETF
-        '011609', # 易方达科创板50ETF
-        '270042', # 广发纳斯达克100
-        '008903', # 广发科技先锋混合
-        '502056', # 广发中证医疗指数
-        '004997', # 广发高端制造股票A
-        '004753', # 广发中证传媒ETF联接C
-        '161725', # 招商中证白酒指数分级
-        '005572', # 中银证券新能源混合C
-        '320007', # 诺安成长混合
-        '161903', # 万家行业优选混合
-        '008087', # 华夏中证5G通信主题ETF
-        '002891', # 华夏移动互联混合人民币
-        '164906', # 交银中证海外中国互联网
-        '260108', # 景顺长城新兴成长混合
-        '006751', # 富国互联科技股票
-        '003494', # 富国天惠成长混合C
-        '001102', # 前海开源国家
-        '001668', # 汇添富全球互联混合
-        '010789', # 汇添富恒生指数
-        '004241', # 中欧时代先锋
-        '163402', # 兴全趋势投资混合
-        '378006', # 上投摩根全球新兴市场
-    ]
-    main(codes)

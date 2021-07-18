@@ -11,23 +11,23 @@ import requests
 class Fund:
     IsTrading = False # 是否是交易时间，只要任意基金在交易，该值将被设为True
 
-    def __init__(self, fund_code):
+    def __init__(self, code):
         """
         declear all instance members here even though it's not required by syntax
         """
-        self.fund_code = fund_code # 基金代码
+        self.code = code # 基金代码
         self.name = '' # 基金名字
         self.worth = [] # 历史累计净值
         self.N = 0 # 记录策略方法buy_or_sell的输出，正数表示买入的金额，负数表示卖出
 
     def __str__(self):
         """convert self to str"""
-        k = '{0}({1})'.format(self.name[:10], self.fund_code)
+        k = '{0}({1})'.format(self.name[:10], self.code)
         v = str(self.N)
         return '{0}:{1}'.format(k, v)
 
     def buy_or_sell(self, worth):
-        """
+        """strategy of trading
         worth是历史上每天的累计净值，worth[-1]是当前的估值。
         输出N表示买入或卖出（用负数表示）的金额。
         默认行为类似于定投，永不止盈。
@@ -40,10 +40,10 @@ class Fund:
         retry = 1 # retry only once
         while retry >= 0:
             try:
-                self.name, self.worth = self.download(self.fund_code)
+                self.name, self.worth = self.download(self.code)
                 break
             except:
-                logging.exception('failed to download data for fund {0}'.format(fund_code))
+                logging.exception('failed to download data for fund {0}'.format(code))
                 retry -= 1
                 if retry < 0:
                     raise
@@ -53,21 +53,21 @@ class Fund:
         return self.N
 
     @classmethod
-    def download(cls, fund_code):
+    def download(cls, code):
         """get historical daily prices including today's if available"""
         # 1. get the history daily price
-        url = 'http://fund.eastmoney.com/pingzhongdata/{0}.js'.format(fund_code)
+        url = 'http://fund.eastmoney.com/pingzhongdata/{0}.js'.format(code)
         r = requests.get(url, timeout=10)
         assert r.status_code == 200
         jsContent = execjs.compile(r.text)
         name = jsContent.eval('fS_name')
-        logging.info('{0}:{1}'.format(fund_code, name))
+        logging.info('{0}:{1}'.format(code, name))
         logging.info('url1: {0}'.format(url))
         ACWorthTrend = jsContent.eval('Data_ACWorthTrend')
         worth = [w for t,w in ACWorthTrend]
 
         # 2. get today's real-time price
-        url = 'http://fundgz.1234567.com.cn/js/{0}.js'.format(fund_code)
+        url = 'http://fundgz.1234567.com.cn/js/{0}.js'.format(code)
         logging.info('url2: {0}'.format(url))
         r = requests.get(url, timeout=10)
         assert r.status_code == 200

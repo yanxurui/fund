@@ -53,6 +53,7 @@ class MyFund(Fund):
         return N
 
 class TestMyFund(unittest.TestCase):
+    '''测试：`python -m unittest monitor`'''
     def test_buy_or_sell(self):
         fake_fund = MyFund(0)
         buy_or_sell = fake_fund.buy_or_sell
@@ -74,7 +75,10 @@ def send_notification(msg):
     logging.info('notification sent')
 
 def main(codes):
-    '''codes是所关注的基金代码的列表'''
+    '''
+    codes是所关注的基金代码的列表。
+    测试：`TEST=1 python monitor.py`
+    '''
     TEST = os.getenv('TEST')
     start = time.time()
     logging.info('-'*50)

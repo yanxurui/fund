@@ -86,7 +86,7 @@ def main(codes):
     failed = []
     for fund_code in codes:
         try:
-            fund = Fund(fund_code)
+            fund = MyFund(fund_code)
             fund.trade()
             success.append(fund)
             if TEST:

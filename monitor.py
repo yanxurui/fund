@@ -22,7 +22,7 @@ class MyFund(Fund):
     '''
     def __str__(self):
         '''convert self to str'''
-        k = '{0}({1})'.format(self.name[:10], self.fund_code)
+        k = '{0}({1})'.format(self.name[:10], self.code)
         v = str(self.N)
         # return MAX when it reaches the highest in history
         if self.N == len(self.worth) - 1:
@@ -86,7 +86,7 @@ def main(codes):
     failed = []
     for fund_code in codes:
         try:
-            fund = Fund(fund_code)
+            fund = MyFund(fund_code)
             fund.trade()
             success.append(fund)
             if TEST:
@@ -103,10 +103,10 @@ def main(codes):
     msg = '\n'.join(lines)
     logging.info(msg)
     # avoid notifying on weekends or in test mode
-    if Fund.IsTrading and not TEST:
+    if MyFund.IsTrading and not TEST:
         send_notification(msg)
     else:
-        logging.info('Skip sending notification')
+        logging.info('Skip sending notification, IsTrading={0}, TEST={1}'.format(MyFund.IsTrading, TEST))
     end = time.time()
     logging.info('Finishied in {0:.2f} seconds'.format(end - start))
 

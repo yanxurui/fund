@@ -43,7 +43,7 @@ class Fund:
                 self.name, self.worth = self.download(self.code)
                 break
             except:
-                logging.exception('failed to download data for fund {0}'.format(code))
+                logging.exception('failed to download data for fund {0}'.format(self.code))
                 retry -= 1
                 if retry < 0:
                     raise

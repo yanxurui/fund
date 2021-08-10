@@ -27,9 +27,15 @@ class MyFund(Fund):
         # return MAX when it reaches the highest in history
         if self.N == len(self.worth) - 1:
             v = 'MAX'
+        elif self.N == -(len(self.worth) - 1):
+            v = 'MIN'
         # 创历史新高后下跌则减仓
+        # Circled Letter Symbols from https://altcodeunicode.com/alt-codes-circled-number-letter-symbols-enclosed-alphanumerics/
         if max(self.worth) == self.worth[-2]:
             v += '🅢'
+        # 下跌到过去100天的谷底时加仓
+        if self.N <= -100:
+            v += '🅑'
         return '{0}:{1}'.format(k, v)
 
     def buy_or_sell(self, worth):
@@ -118,6 +124,7 @@ if __name__ == '__main__':
         '001593', # 天弘创业板ETF
         '001595', # 天弘中证银行指数C
         '008591', # 天弘中证全指证券公司指数C
+        '012349', # 天弘恒生科技指数
         '004746', # 易方达上证50指数
         '005827', # 易方达蓝筹精选混合
         '110022', # 易方达消费行业股票

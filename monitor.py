@@ -26,16 +26,24 @@ class MyFund(Fund):
         v = str(self.N)
         # return MAX when it reaches the highest in history
         if self.N == len(self.worth) - 1:
-            v = 'MAX'
+            v = 'MAX' # 历史最高点
         elif self.N == -(len(self.worth) - 1):
-            v = 'MIN'
+            v = 'MIN' # 历史最低点
         # 创历史新高后下跌则减仓
         # Circled Letter Symbols from https://altcodeunicode.com/alt-codes-circled-number-letter-symbols-enclosed-alphanumerics/
         if max(self.worth) == self.worth[-2]:
-            v += '🅢'
-        # 下跌到过去100天的谷底时加仓
+            v += '🅢' # sell
+        # 下跌到过去100个交易日的谷底时加仓
         if self.N <= -100:
-            v += '🅑'
+            v += '🅑' # buy
+        # 最大回撤
+        mdd, cur = self.mdd()
+        now = cur > 0 and cur == mdd
+        # 当前出现历史最大或较大(>20%)的回撤
+        if now or cur > 0.2:
+            v += '{:.0f}%'.format(100*cur)
+        if now:
+            v += '🅜'
         return '{0}:{1}'.format(k, v)
 
     def buy_or_sell(self, worth):
@@ -58,6 +66,30 @@ class MyFund(Fund):
                 break
         return N
 
+    def mdd(self):
+        '''return current drawdown, maximum drawdown'''
+        if not self.worth:
+            return 0, 0
+        current_drawdown = 0
+        max_drawdown = 0
+        start = 0
+        end = 0
+        start_tmp = 0
+        worth = self.worth[::-1]
+        for i in range(1, len(worth)):
+            # find a lower point or reach to the start point
+            if worth[i] < worth[start_tmp] or i == len(worth)-1:
+                tmp_drawdown = 1 - worth[start_tmp] / max(worth[start_tmp:i+1])
+                if start_tmp == 0:
+                    current_drawdown = tmp_drawdown
+                if tmp_drawdown > max_drawdown:
+                    max_drawdown = tmp_drawdown
+                    start = start_tmp
+                    end = i - 1
+                start_tmp = i
+        logging.info('最大回撤：{:.1f}%'.format(100*max_drawdown))
+        return round(max_drawdown, 4), round(current_drawdown, 4)
+
 class TestMyFund(unittest.TestCase):
     '''测试：`python -m unittest monitor`'''
     def test_buy_or_sell(self):
@@ -72,6 +104,37 @@ class TestMyFund(unittest.TestCase):
         self.assertEqual(-1, buy_or_sell([2, 1]))
         self.assertEqual(0, buy_or_sell([2, 1, 1]))
         self.assertEqual(-2, buy_or_sell([1, 3, 2, 1]))
+
+    def test_mdd(self):
+        fake_fund = MyFund(0)
+        # empty
+        fake_fund.worth = []
+        self.assertEqual((0, 0), fake_fund.mdd())
+        # 1 point
+        fake_fund.worth = [1]
+        self.assertEqual((0, 0), fake_fund.mdd())
+        # 2 points
+        fake_fund.worth = [0.8, 1]
+        self.assertEqual((0, 0), fake_fund.mdd())
+        fake_fund.worth = [1, 0.8]
+        self.assertEqual((0.2, 0.2), fake_fund.mdd())
+        # 3 points
+        fake_fund.worth = [1, 0.8, 0.6]
+        self.assertEqual((0.4, 0.4), fake_fund.mdd())
+        fake_fund.worth = [1, 0.8, 1.2]
+        self.assertEqual((0.2, 0), fake_fund.mdd())
+        fake_fund.worth = [0.8, 1, 1.2]
+        self.assertEqual((0, 0), fake_fund.mdd())
+        fake_fund.worth = [0.8, 1, 0.6]
+        self.assertEqual((0.4, 0.4), fake_fund.mdd())
+        # 4 points
+        fake_fund.worth = [1, 0.6, 1, 0.8]
+        self.assertEqual((0.4, 0.2), fake_fund.mdd())
+        fake_fund.worth = [1, 0.8, 1, 0.6]
+        self.assertEqual((0.4, 0.4), fake_fund.mdd())
+        # 最大回撤的开始和结束没有涉及到最高点或最低点
+        fake_fund.worth = [0.8, 0.7, 1, 0.8, 1.2]
+        self.assertEqual((0.2, 0), fake_fund.mdd())
 
 
 def send_notification(msg):

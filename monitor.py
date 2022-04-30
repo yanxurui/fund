@@ -87,7 +87,7 @@ class MyFund(Fund):
                     start = start_tmp
                     end = i - 1
                 start_tmp = i
-        logging.info('最大回撤：{:.1f}%'.format(100*max_drawdown))
+        logging.debug('最大回撤：{:.1f}%'.format(100*max_drawdown))
         return round(max_drawdown, 4), round(current_drawdown, 4)
 
 class TestMyFund(unittest.TestCase):

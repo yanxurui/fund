@@ -63,6 +63,7 @@ class Fund:
         name = jsContent.eval('fS_name')
         logging.info('{0}:{1}'.format(code, name))
         logging.info('url1: {0}'.format(url))
+        # 基金的累计净值，代表基金从成立以来的整体收益情况，比较直观和全面地反映基金在运作期间的历史表现
         ACWorthTrend = jsContent.eval('Data_ACWorthTrend')
         worth = [w for t,w in ACWorthTrend]
 

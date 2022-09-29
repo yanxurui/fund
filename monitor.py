@@ -34,13 +34,17 @@ class MyFund(Fund):
         if max(self.worth) == self.worth[-2]:
             v += '🅢' # sell
         # 下跌到过去100个交易日的谷底时加仓
-        if self.N <= -100:
+        # ***这里用了一个hardcoded的经验值***
+        if self.N <= -300:
             v += '🅑' # buy
         # 最大回撤
         mdd, cur = self.mdd()
         now = cur > 0 and cur == mdd
         # 当前出现历史最大或较大(>20%)的回撤
         if now or cur > 0.2:
+            if v[-1] .isdigit():
+                # avoid output like -9622%
+                v += '|'
             v += '{:.0f}%'.format(100*cur)
         if now:
             v += '🅜'
@@ -67,7 +71,7 @@ class MyFund(Fund):
         return N
 
     def mdd(self):
-        '''return current drawdown, maximum drawdown'''
+        '''return maximum drawdown, current drawdown'''
         if not self.worth:
             return 0, 0
         current_drawdown = 0
@@ -136,6 +140,58 @@ class TestMyFund(unittest.TestCase):
         fake_fund.worth = [0.8, 0.7, 1, 0.8, 1.2]
         self.assertEqual((0.2, 0), fake_fund.mdd())
 
+    def test_str(self):
+        fake_fund = MyFund(0)
+        fake_fund.name = '123456789012'
+
+        # scenario #1
+        fake_fund.N = -3
+        fake_fund.worth = [1.2, 0.5, 1, 0.9]
+        f = str(fake_fund)
+        print(f)
+        self.assertFalse('🅢' in f)
+        self.assertFalse('🅑' in f)
+        self.assertFalse('🅜' in f)
+        self.assertFalse('|' in f)
+
+        # scenario #2
+        fake_fund.N = -1
+        fake_fund.worth = [1.5, 0.5, 1, 0.7]
+        f = str(fake_fund)
+        print(f)
+        self.assertFalse('🅢' in f)
+        self.assertFalse('🅑' in f)
+        self.assertFalse('🅜' in f)
+        self.assertTrue('|' in f)
+        self.assertTrue('30%' in f)
+
+        # scenario #3
+        fake_fund.worth = [1.2, 0.8, 1, 0.6]
+        f = str(fake_fund)
+        print(f)
+        self.assertFalse('🅢' in f)
+        self.assertFalse('🅑' in f)
+        self.assertTrue('🅜' in f)
+        self.assertTrue('|' in f)
+
+        # scenario #4
+        fake_fund.N = -500
+        f = str(fake_fund)
+        print(f)
+        self.assertFalse('🅢' in f)
+        self.assertTrue('🅑' in f)
+        self.assertTrue('🅜' in f)
+        self.assertFalse('|' in f)
+
+        # scenario #5
+        fake_fund.N = -2
+        fake_fund.worth = [0.8, 1, 0.6]
+        f = str(fake_fund)
+        print(f)
+        self.assertTrue('🅢' in f)
+        self.assertFalse('🅑' in f)
+        self.assertTrue('🅜' in f)
+        self.assertFalse('|' in f)
 
 def send_notification(msg):
     '''send notifiation via quip'''

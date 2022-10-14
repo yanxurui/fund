@@ -44,7 +44,7 @@ class MyFund(Fund):
         if now or cur > 0.2:
             if v[-1] .isdigit():
                 # avoid output like -9622%
-                v += '|'
+                v += ','
             v += '{:.0f}%'.format(100*cur)
         if now:
             v += '🅜'
@@ -152,7 +152,7 @@ class TestMyFund(unittest.TestCase):
         self.assertFalse('🅢' in f)
         self.assertFalse('🅑' in f)
         self.assertFalse('🅜' in f)
-        self.assertFalse('|' in f)
+        self.assertFalse(',' in f)
 
         # scenario #2
         fake_fund.N = -1
@@ -162,7 +162,7 @@ class TestMyFund(unittest.TestCase):
         self.assertFalse('🅢' in f)
         self.assertFalse('🅑' in f)
         self.assertFalse('🅜' in f)
-        self.assertTrue('|' in f)
+        self.assertTrue(',' in f)
         self.assertTrue('30%' in f)
 
         # scenario #3
@@ -172,7 +172,7 @@ class TestMyFund(unittest.TestCase):
         self.assertFalse('🅢' in f)
         self.assertFalse('🅑' in f)
         self.assertTrue('🅜' in f)
-        self.assertTrue('|' in f)
+        self.assertTrue(',' in f)
 
         # scenario #4
         fake_fund.N = -500
@@ -181,7 +181,7 @@ class TestMyFund(unittest.TestCase):
         self.assertFalse('🅢' in f)
         self.assertTrue('🅑' in f)
         self.assertTrue('🅜' in f)
-        self.assertFalse('|' in f)
+        self.assertFalse(',' in f)
 
         # scenario #5
         fake_fund.N = -2
@@ -191,7 +191,7 @@ class TestMyFund(unittest.TestCase):
         self.assertTrue('🅢' in f)
         self.assertFalse('🅑' in f)
         self.assertTrue('🅜' in f)
-        self.assertFalse('|' in f)
+        self.assertFalse(',' in f)
 
 def send_notification(msg):
     '''send notifiation via quip'''

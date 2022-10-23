@@ -4,10 +4,7 @@ import time
 import logging
 import unittest
 
-import CONFIG
-import quip
-# also import TestFund so that when `python -m unittest monitor`
-# will also run TestFund
+import utils
 from fund import Fund, TestFund
 
 
@@ -193,18 +190,14 @@ class TestMyFund(unittest.TestCase):
         self.assertTrue('🅜' in f)
         self.assertFalse(',' in f)
 
-def send_notification(msg):
-    '''send notifiation via quip'''
-    client = quip.QuipClient(access_token=CONFIG.QUIP_TOKEN)
-    r = client.new_message(thread_id='XWWAAAszoRa', content=msg)
-    logging.info('notification sent')
-
 def main(codes):
     '''
     codes是所关注的基金代码的列表。
     测试：`TEST=1 python monitor.py`
     '''
     TEST = os.getenv('TEST')
+    if TEST:
+        logging.info('TEST mode')
     start = time.time()
     logging.info('-'*50)
     success = []
@@ -215,21 +208,33 @@ def main(codes):
             fund.trade()
             success.append(fund)
             if TEST:
-                logging.info('TEST mode')
                 break
         except:
             logging.exception('failed to get fund {0}'.format(fund_code))
             failed.append(fund_code)
+
     # sort by N in place
     success.sort(key=lambda x: x.N, reverse=True)
+
+    # construct the message to send to subscribers
     lines = list(map(str, success))
+    html_msg = utils.html_table(list(map(lambda x: x.split(':'), lines)), head=False)
+    error_msg = ''
     if failed:
-        lines.append('Failed: ' + ','.join(failed))
-    msg = '\n'.join(lines)
-    logging.info(msg)
+        error_msg = 'Failed: ' + ','.join(failed)
+        lines.append(error_msg)
+        html_msg += '\n<p style="color:red">{}</p>'.format(error_msg)
+    text_msg = '\n'.join(lines)
+    html_msg += '\nsource in <a target="_blank" href="https://github.com/yanxurui/fund">Github</a>'
+    logging.info(text_msg)
+    logging.info(html_msg)
+
+    # send notification
     # avoid notifying on weekends or in test mode
     if MyFund.IsTrading and not TEST:
-        send_notification(msg)
+        utils.send_email(
+            ['1075156771@qq.com', 'yxr1993@gmail.com'],
+            html_msg, 'html')
     else:
         logging.info('Skip sending notification, IsTrading={0}, TEST={1}'.format(MyFund.IsTrading, TEST))
     end = time.time()
@@ -260,7 +265,6 @@ if __name__ == '__main__':
         '004813', # 中欧先进制造股票C
         '320007', # 诺安成长混合
         '161903', # 万家行业优选混合
-        '002891', # 华夏移动互联混合人民币
         '164906', # 交银中证海外中国互联网
         '260108', # 景顺长城新兴成长混合
         '006751', # 富国互联科技股票

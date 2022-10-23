@@ -190,6 +190,16 @@ class TestMyFund(unittest.TestCase):
         self.assertTrue('🅜' in f)
         self.assertFalse(',' in f)
 
+HTML_TEMPLATE = '''
+<table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+        <td align="center">
+            {}
+            <p>source in <a target="_blank" href="https://github.com/yanxurui/fund">Github</a></p>
+        </td>
+    </tr>
+</table>'''
+
 def main(codes):
     '''
     codes是所关注的基金代码的列表。
@@ -225,7 +235,7 @@ def main(codes):
         lines.append(error_msg)
         html_msg += '\n<p style="color:red">{}</p>'.format(error_msg)
     text_msg = '\n'.join(lines)
-    html_msg += '\nsource in <a target="_blank" href="https://github.com/yanxurui/fund">Github</a>'
+    html_msg = HTML_TEMPLATE.format(html_msg)
     logging.info(text_msg)
     logging.info(html_msg)
 

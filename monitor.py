@@ -243,7 +243,7 @@ def main(codes):
     # avoid notifying on weekends or in test mode
     if MyFund.IsTrading and not TEST:
         utils.send_email(
-            ['1075156771@qq.com', 'yxr1993@gmail.com'],
+            ['yanxurui1993@qq.com', 'yxr1993@gmail.com'],
             html_msg, 'html')
     else:
         logging.info('Skip sending notification, IsTrading={0}, TEST={1}'.format(MyFund.IsTrading, TEST))

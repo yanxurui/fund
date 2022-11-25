@@ -19,7 +19,7 @@ class MyFund(Fund):
     '''
     def __str__(self):
         '''convert self to str'''
-        k = '{0}({1})'.format(self.name[:10], self.code)
+        k = '{0}({1})'.format(self.name, self.code)
         v = str(self.N)
         # return MAX when it reaches the highest in history
         if self.N == len(self.worth) - 1:
@@ -243,7 +243,7 @@ def main(codes):
     # avoid notifying on weekends or in test mode
     if MyFund.IsTrading and not TEST:
         utils.send_email(
-            ['yanxurui1993@qq.com', 'yxr1993@gmail.com'],
+            ['yanxurui1993@qq.com'],
             html_msg, 'html')
     else:
         logging.info('Skip sending notification, IsTrading={0}, TEST={1}'.format(MyFund.IsTrading, TEST))

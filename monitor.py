@@ -4,6 +4,11 @@ import time
 import logging
 import unittest
 
+import gevent
+from gevent.pool import Pool
+from gevent import monkey
+monkey.patch_all()
+
 import utils
 from fund import Fund, TestFund
 
@@ -208,20 +213,31 @@ def main(codes):
     TEST = os.getenv('TEST')
     if TEST:
         logging.info('TEST mode')
+        codes = codes[0]
     start = time.time()
     logging.info('-'*50)
     success = []
     failed = []
-    for fund_code in codes:
+
+    # crawling in a parallel manner using gevent
+    def process_async(fund_code):
+        start = time.time()
         try:
             fund = MyFund(fund_code)
             fund.trade()
             success.append(fund)
-            if TEST:
-                break
         except:
             logging.exception('failed to get fund {0}'.format(fund_code))
             failed.append(fund_code)
+        return time.time() - start
+
+    pool = Pool(5)
+    start = time.time()
+    total_time = 0
+    for t in pool.imap_unordered(process_async, codes):
+        total_time += t
+    actual_time = time.time() - start
+    logging.info('total time needed is %.2f, actual time spent is %.2f', total_time, actual_time)
 
     # sort by N in place
     success.sort(key=lambda x: x.N, reverse=True)
@@ -237,7 +253,7 @@ def main(codes):
     text_msg = '\n'.join(lines)
     html_msg = HTML_TEMPLATE.format(html_msg)
     logging.info(text_msg)
-    logging.info(html_msg)
+    logging.debug(html_msg)
 
     # send notification
     # avoid notifying on weekends or in test mode

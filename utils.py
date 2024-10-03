@@ -10,15 +10,7 @@ from email.mime.multipart import MIMEMultipart
 from email.header import Header
 from smtplib import SMTP_SSL
 
-import quip
 import CONFIG
-
-
-def send_quip_message(msg):
-    '''send notifiation via quip'''
-    client = quip.QuipClient(access_token=CONFIG.QUIP_TOKEN)
-    r = client.new_message(thread_id='XWWAAAszoRa', content=msg)
-    logging.info('notification sent')
 
 def html_table(lol, head=True):
     def yield_lines():

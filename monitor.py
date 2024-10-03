@@ -5,8 +5,8 @@ import logging
 import unittest
 
 import gevent
-from gevent.pool import Pool
 from gevent import monkey
+from gevent.pool import Pool
 monkey.patch_all()
 
 import utils
@@ -16,184 +16,6 @@ from fund import Fund, TestFund
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)s %(name)s %(filename)s:%(lineno)d %(message)s')
-
-class MyFund(Fund):
-    '''
-    该策略并未直接输出买入或卖出的金额，而是输出一个强弱信号，由我自己决定
-    self.N: 正数代表比过去N个交易日价格高，负数代表比过去N个交易日价格低
-    '''
-    def __str__(self):
-        '''convert self to str'''
-        k = '{0}({1})'.format(self.name, self.code)
-        v = str(self.N)
-        # return MAX when it reaches the highest in history
-        if self.N == len(self.worth) - 1:
-            v = 'MAX' # 历史最高点
-        elif self.N == -(len(self.worth) - 1):
-            v = 'MIN' # 历史最低点
-        # 创历史新高后下跌则减仓
-        # Circled Letter Symbols from https://altcodeunicode.com/alt-codes-circled-number-letter-symbols-enclosed-alphanumerics/
-        if max(self.worth) == self.worth[-2]:
-            v += '🅢' # sell
-        # 下跌到过去100个交易日的谷底时加仓
-        # ***这里用了一个hardcoded的经验值***
-        if self.N <= -300:
-            v += '🅑' # buy
-        # 最大回撤
-        mdd, cur = self.mdd()
-        now = cur > 0 and cur == mdd
-        # 当前出现历史最大或较大(>20%)的回撤
-        if now or cur > 0.2:
-            if v[-1] .isdigit():
-                # avoid output like -9622%
-                v += ','
-            v += '{:.0f}%'.format(100*cur)
-        if now:
-            v += '🅜'
-        return '{0}:{1}'.format(k, v)
-
-    def buy_or_sell(self, worth):
-        '''returns N which indicates the current price is higher (+) or lower (-) than the past N days (exclusively)'''
-        N = 0
-        # empty or None
-        if not worth:
-            return 0
-        worth = worth[::-1]
-        current = worth[0]
-        for i in range(1, len(worth)):
-            if current > worth[i]:
-                N = i
-            else:
-                break
-        for i in range(1, len(worth)):
-            if current < worth[i]:
-                N = -i
-            else:
-                break
-        return N
-
-    def mdd(self):
-        '''return maximum drawdown, current drawdown'''
-        if not self.worth:
-            return 0, 0
-        current_drawdown = 0
-        max_drawdown = 0
-        start = 0
-        end = 0
-        start_tmp = 0
-        worth = self.worth[::-1]
-        for i in range(1, len(worth)):
-            # find a lower point or reach to the start point
-            if worth[i] < worth[start_tmp] or i == len(worth)-1:
-                tmp_drawdown = 1 - worth[start_tmp] / max(worth[start_tmp:i+1])
-                if start_tmp == 0:
-                    current_drawdown = tmp_drawdown
-                if tmp_drawdown > max_drawdown:
-                    max_drawdown = tmp_drawdown
-                    start = start_tmp
-                    end = i - 1
-                start_tmp = i
-        logging.debug('最大回撤：{:.1f}%'.format(100*max_drawdown))
-        return round(max_drawdown, 4), round(current_drawdown, 4)
-
-class TestMyFund(unittest.TestCase):
-    '''测试：`python -m unittest monitor`'''
-    def test_buy_or_sell(self):
-        fake_fund = MyFund(0)
-        buy_or_sell = fake_fund.buy_or_sell
-        self.assertEqual(0, buy_or_sell([]))
-        self.assertEqual(0, buy_or_sell([1]))
-        self.assertEqual(1, buy_or_sell([1, 2]))
-        self.assertEqual(0, buy_or_sell([1, 2, 2]))
-        self.assertEqual(2, buy_or_sell([1, 2, 3]))
-        self.assertEqual(2, buy_or_sell([4, 1, 2, 3]))
-        self.assertEqual(-1, buy_or_sell([2, 1]))
-        self.assertEqual(0, buy_or_sell([2, 1, 1]))
-        self.assertEqual(-2, buy_or_sell([1, 3, 2, 1]))
-
-    def test_mdd(self):
-        fake_fund = MyFund(0)
-        # empty
-        fake_fund.worth = []
-        self.assertEqual((0, 0), fake_fund.mdd())
-        # 1 point
-        fake_fund.worth = [1]
-        self.assertEqual((0, 0), fake_fund.mdd())
-        # 2 points
-        fake_fund.worth = [0.8, 1]
-        self.assertEqual((0, 0), fake_fund.mdd())
-        fake_fund.worth = [1, 0.8]
-        self.assertEqual((0.2, 0.2), fake_fund.mdd())
-        # 3 points
-        fake_fund.worth = [1, 0.8, 0.6]
-        self.assertEqual((0.4, 0.4), fake_fund.mdd())
-        fake_fund.worth = [1, 0.8, 1.2]
-        self.assertEqual((0.2, 0), fake_fund.mdd())
-        fake_fund.worth = [0.8, 1, 1.2]
-        self.assertEqual((0, 0), fake_fund.mdd())
-        fake_fund.worth = [0.8, 1, 0.6]
-        self.assertEqual((0.4, 0.4), fake_fund.mdd())
-        # 4 points
-        fake_fund.worth = [1, 0.6, 1, 0.8]
-        self.assertEqual((0.4, 0.2), fake_fund.mdd())
-        fake_fund.worth = [1, 0.8, 1, 0.6]
-        self.assertEqual((0.4, 0.4), fake_fund.mdd())
-        # 最大回撤的开始和结束没有涉及到最高点或最低点
-        fake_fund.worth = [0.8, 0.7, 1, 0.8, 1.2]
-        self.assertEqual((0.2, 0), fake_fund.mdd())
-
-    def test_str(self):
-        fake_fund = MyFund(0)
-        fake_fund.name = '123456789012'
-
-        # scenario #1
-        fake_fund.N = -3
-        fake_fund.worth = [1.2, 0.5, 1, 0.9]
-        f = str(fake_fund)
-        print(f)
-        self.assertFalse('🅢' in f)
-        self.assertFalse('🅑' in f)
-        self.assertFalse('🅜' in f)
-        self.assertFalse(',' in f)
-
-        # scenario #2
-        fake_fund.N = -1
-        fake_fund.worth = [1.5, 0.5, 1, 0.7]
-        f = str(fake_fund)
-        print(f)
-        self.assertFalse('🅢' in f)
-        self.assertFalse('🅑' in f)
-        self.assertFalse('🅜' in f)
-        self.assertTrue(',' in f)
-        self.assertTrue('30%' in f)
-
-        # scenario #3
-        fake_fund.worth = [1.2, 0.8, 1, 0.6]
-        f = str(fake_fund)
-        print(f)
-        self.assertFalse('🅢' in f)
-        self.assertFalse('🅑' in f)
-        self.assertTrue('🅜' in f)
-        self.assertTrue(',' in f)
-
-        # scenario #4
-        fake_fund.N = -500
-        f = str(fake_fund)
-        print(f)
-        self.assertFalse('🅢' in f)
-        self.assertTrue('🅑' in f)
-        self.assertTrue('🅜' in f)
-        self.assertFalse(',' in f)
-
-        # scenario #5
-        fake_fund.N = -2
-        fake_fund.worth = [0.8, 1, 0.6]
-        f = str(fake_fund)
-        print(f)
-        self.assertTrue('🅢' in f)
-        self.assertFalse('🅑' in f)
-        self.assertTrue('🅜' in f)
-        self.assertFalse(',' in f)
 
 HTML_TEMPLATE = '''
 <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -205,66 +27,84 @@ HTML_TEMPLATE = '''
     </tr>
 </table>'''
 
-def main(codes):
-    '''
-    codes是所关注的基金代码的列表。
-    测试：`TEST=1 python monitor.py`
-    '''
-    TEST = os.getenv('TEST')
-    if TEST:
-        logging.info('TEST mode')
-        codes = codes[0]
-    start = time.time()
-    logging.info('-'*50)
-    success = []
-    failed = []
+class Monitor:
+    def __init__(self):
+        self.success = []
+        self.failed = []
+        self.TEST = os.getenv('TEST')
 
-    # crawling in a parallel manner using gevent
-    def process_async(fund_code):
+    def process(self, funds):
+        
+        if self.TEST:
+            logging.info('TEST mode')
+            funds = funds[:2]
         start = time.time()
-        try:
-            fund = MyFund(fund_code)
-            fund.trade()
-            success.append(fund)
-        except:
-            logging.exception('failed to get fund {0}'.format(fund_code))
-            failed.append(fund_code)
-        return time.time() - start
+        logging.info('-'*50)
 
-    pool = Pool(5)
-    start = time.time()
-    total_time = 0
-    for t in pool.imap_unordered(process_async, codes):
-        total_time += t
-    actual_time = time.time() - start
-    logging.info('total time needed is %.2f, actual time spent is %.2f', total_time, actual_time)
+        # crawling in a parallel manner using gevent
+        def process_async(fund):
+            start = time.time()
+            try:
+                fund.trade()
+                self.success.append(fund)
+            except:
+                logging.exception('failed to get fund {0}'.format(fund.code))
+                self.failed.append(fund.code)
+            return time.time() - start
 
-    # sort by N in place
-    success.sort(key=lambda x: x.N, reverse=True)
+        pool = Pool(5)
+        start = time.time()
+        total_time = 0
+        for t in pool.imap_unordered(process_async, funds):
+            total_time += t
+        actual_time = time.time() - start
+        logging.info('total time needed is %.2f, actual time spent is %.2f', total_time, actual_time)
 
-    # construct the message to send to subscribers
-    lines = list(map(str, success))
-    html_msg = utils.html_table(list(map(lambda x: x.split(':'), lines)), head=False)
-    error_msg = ''
-    if failed:
-        error_msg = 'Failed: ' + ','.join(failed)
-        lines.append(error_msg)
-        html_msg += '\n<p style="color:red">{}</p>'.format(error_msg)
-    text_msg = '\n'.join(lines)
-    html_msg = HTML_TEMPLATE.format(html_msg)
-    logging.info(text_msg)
-    logging.debug(html_msg)
+        self.output()
+        end = time.time()
+        logging.info('Finishied in {0:.2f} seconds'.format(end - start))
 
-    # send notification
-    # avoid notifying on weekends or in test mode
-    if MyFund.IsTrading and not TEST:
-        utils.send_email(
-            ['yanxurui1993@qq.com'],
-            html_msg, 'html')
-    else:
-        logging.info('Skip sending notification, IsTrading={0}, TEST={1}'.format(MyFund.IsTrading, TEST))
-    end = time.time()
-    logging.info('Finishied in {0:.2f} seconds'.format(end - start))
+    def output(self):
+        html_msg = self.format()
+        if not html_msg:
+            logging.info('Skip sending notification')
+        else:
+            # send notification
+            # avoid notifying on weekends or in test mode
+            if not self.TEST:
+                utils.send_email(
+                    ['yanxurui1993@qq.com'],
+                    html_msg, 'html')
+            else:
+                logging.info('Skip sending notification in test mode')
+
+    def format(self):
+        results = self.filter_sort()
+        if not results:
+            return ''
+
+        # construct the message to send to subscribers
+        lines = list(map(str, results))
+        html_msg = utils.html_table(list(map(lambda x: x.split(':'), lines)), head=False)
+        error_msg = ''
+        if self.failed:
+            error_msg = 'Failed: ' + ','.join(self.failed)
+            lines.append(error_msg)
+            html_msg += '\n<p style="color:red">{}</p>'.format(error_msg)
+        text_msg = '\n'.join(lines)
+        html_msg = HTML_TEMPLATE.format(html_msg)
+        logging.info(text_msg)
+        logging.debug(html_msg)
+        return html_msg
+
+    def filter_sort(self):
+        if any([fund.trading for fund in self.success]):
+            # sort by N in place
+            self.success.sort(key=lambda x: x.N, reverse=True)
+            return self.success
+        else:
+            logging.info('No trading today')
+            return []
 
 
 if __name__ == '__main__':

@@ -9,8 +9,6 @@ import execjs
 import requests
 
 class Fund:
-    IsTrading = False # 是否是交易时间，只要任意基金在交易，该值将被设为True
-
     def __init__(self, code):
         """
         declear all instance members here even though it's not required by syntax
@@ -18,6 +16,7 @@ class Fund:
         self.code = code # 基金代码
         self.name = '' # 基金名字
         self.worth = [] # 历史累计净值
+        self.trading = False # 当前是否正在交易
         self.N = 0 # 记录策略方法buy_or_sell的输出，正数表示买入的金额，负数表示卖出
 
     def __str__(self):
@@ -40,7 +39,7 @@ class Fund:
         retry = 1 # retry only once
         while retry >= 0:
             try:
-                self.name, self.worth = self.download(self.code)
+                self.download()
                 break
             except:
                 logging.exception('failed to download data for fund {0}'.format(self.code))
@@ -52,9 +51,9 @@ class Fund:
         self.N = self.buy_or_sell(self.worth)
         return self.N
 
-    @classmethod
-    def download(cls, code):
+    def download(self):
         """get historical daily prices including today's if available"""
+        code = self.code
         # 1. get the history daily price
         url = 'http://fund.eastmoney.com/pingzhongdata/{0}.js'.format(code)
         r = requests.get(url, timeout=10)
@@ -72,11 +71,12 @@ class Fund:
         logging.info('url2: {0}'.format(url))
         r = requests.get(url, timeout=10)
         assert r.status_code == 200
-        rate = cls.parse_current_rate(r.text)
+        rate = Fund.parse_current_rate(r.text)
         if rate is not None:
-            cls.IsTrading = True
+            self.trading = True
             worth.append(worth[-1] * (1 + rate/100))
-        return name, worth
+        self.name = name
+        self.worth = worth
 
     @staticmethod
     def parse_current_rate(text):

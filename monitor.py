@@ -1,8 +1,10 @@
-# -*- coding: UTF-8 -*-
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import os
 import time
 import logging
 import unittest
+from datetime import datetime
 
 import gevent
 from gevent import monkey
@@ -31,6 +33,7 @@ class Monitor:
     def __init__(self):
         self.success = []
         self.failed = []
+        self.subject = '基金小作手【{}】'.format(datetime.now().strftime(u"%Y{0}%m{1}%d{2}").format(*'年月日'))
         self.TEST = os.getenv('TEST')
 
     def process(self, funds):
@@ -80,7 +83,9 @@ class Monitor:
             if not self.TEST:
                 utils.send_email(
                     ['yanxurui1993@qq.com'],
-                    html_msg, 'html')
+                    self.subject,
+                    html_msg,
+                    mimetype='html')
             else:
                 logging.info('Skip sending notification in test mode')
 

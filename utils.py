@@ -22,13 +22,12 @@ def html_table(lol, head=True):
                 if head and i == 0:
                     yield '    <th>{}</th>'.format(e)
                 else:
-
                     yield '    <td>{}</td>'.format(e)
             yield '  </tr>'
         yield '</table>'
     return '\n'.join(yield_lines())
 
-def send_email(receiver, mail_content, mimetype='plain', doNotSend=False):
+def send_email(receiver, subject, mail_content, mimetype='plain', doNotSend=False):
     logging.info('send email...')
 
     host_server = 'smtp.qq.com'
@@ -37,7 +36,6 @@ def send_email(receiver, mail_content, mimetype='plain', doNotSend=False):
     smtp = SMTP_SSL(host_server)
     smtp.login(sender_qq_mail, pwd)
 
-    subject = '基金小作手【{}】'.format(datetime.now().strftime("%Y年%m月%d日"))
     msg = MIMEMultipart()
     msg.attach(MIMEText(mail_content, mimetype, 'utf-8'))
     msg["Subject"] = Header(subject, 'utf-8')
@@ -151,7 +149,9 @@ class TestUtils(unittest.TestCase):
 """
         send_email(
             ['yanxurui1993@qq.com', 'yxr1993@gmail.com'],
-            html_msg, 'html')
+            "Test",
+            html_msg,
+            'html')
 
 if __name__ == '__main__':
     # send_notification('test')

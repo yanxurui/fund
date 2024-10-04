@@ -23,7 +23,10 @@ class MyStock(MyFund):
         self.last_price = hist.iloc[-1].to_dict()
 
 class StockMonitor(Monitor):
-    # override the filter_sort method
+    def __init__(self):
+        super().__init__()
+        self.subject = '股票小作手【{}】'.format(datetime.now().strftime(u"%Y{0}%m{1}%d{2}").format(*'年月日'))
+
     def filter_sort(self):
         now = datetime.now()
         date_format = '%Y-%m-%d %H:%M:%S'
@@ -109,7 +112,7 @@ class TestStockMonitor(unittest.TestCase):
         if os.path.exists('snapshot.json'):
             os.remove('snapshot.json')
 
-    def create_stock(self, code="007", N=0, cur=0, worth=[], last_price=1):
+    def create_stock(self, code="007", N=0, cur=0, worth=[], last_price={'收盘': 1}):
         stock = MyStock(code)
         stock.N = N
         stock.cur = cur
@@ -124,7 +127,7 @@ class TestStockMonitor(unittest.TestCase):
     def test_filter_sort_trading(self):
         self.filter_sort()
         self.assertEqual(False, self.s.trading)
-        self.s.last_price = 2
+        self.s.last_price = {'收盘': 2}
         self.filter_sort()
         self.assertEqual(True, self.s.trading)
 
@@ -136,26 +139,26 @@ class TestStockMonitor(unittest.TestCase):
 
     def test_filter_sort_is_interesting_1(self):
         s = self.s
-        s.last_price = 2
+        s.last_price = {'收盘': 2}
         s.N = -1000
         self.assertEqual([s], self.filter_sort())
 
     def test_filter_sort_is_interesting_2(self):
         s = self.s
-        s.last_price = 2
+        s.last_price = {'收盘': 2}
         s.cur = 0.5
         self.assertEqual([s], self.filter_sort())
 
     def test_filter_sort_is_interesting_3(self):
         s = self.s
-        s.last_price = 3
+        s.last_price = {'收盘': 3}
         s.N = 2
         s.worth = [1, 2, 3]
         self.assertEqual([s], self.filter_sort())
 
     def test_filter_sort_dedup(self):
         s = self.s
-        s.last_price = 2
+        s.last_price = {'收盘': 2}
         s.N = -1000
         self.assertEqual([s], self.filter_sort())
         self.assertEqual([], self.filter_sort())

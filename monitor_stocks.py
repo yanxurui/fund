@@ -33,11 +33,13 @@ class StockMonitor(Monitor):
         # the snapshot is a dictionary with code as the key
         # the value is a dictionary:
         # {
+        #     'dateime': '2021-08-01 12:00:00',
         #     'N': -356,
         #     'trading': True,
-        #     'dateime': '2021-08-01 12:00:00',
-        #     'last_notified_time': '2021-08-01 12:00:00',
         #     'last_price': 100,
+        #      'mdd': 0.2,
+        #      'cur': 0.1,
+        #     'last_notified_time': '2021-08-01 12:00:00',
         # }
         snapshot = {}
         if os.path.exists('snapshot.json'):
@@ -56,9 +58,10 @@ class StockMonitor(Monitor):
                 snapshot[s.code] = {
                     'last_notified_time': '2000-01-01 00:00:00',
                 }
+            snapshot[s.code]['datetime'] = now.strftime(date_format)
             snapshot[s.code]['N'] = s.N
             snapshot[s.code]['trading'] = s.trading
-            snapshot[s.code]['datetime'] = now.strftime(date_format)
+            snapshot[s.code]['cur'] = s.cur
             snapshot[s.code]['last_price'] = s.last_price
 
         def is_interesting(s):
@@ -69,7 +72,7 @@ class StockMonitor(Monitor):
             if s.N < -500:
                 return True
             # 2. drawdown is greater than 20%
-            if s.mdd > 0.2:
+            if s.cur > 0.2:
                 return True
             # 3. reached the highest price
             if s.N == len(s.worth) - 1:
@@ -107,10 +110,10 @@ class TestStockMonitor(unittest.TestCase):
         if os.path.exists('snapshot.json'):
             os.remove('snapshot.json')
 
-    def create_stock(self, code="007", N=0, mdd=0, worth=[], last_price=1):
+    def create_stock(self, code="007", N=0, cur=0, worth=[], last_price=1):
         stock = MyStock(code)
         stock.N = N
-        stock.mdd = mdd
+        stock.cur = cur
         stock.worth = worth
         stock.last_price = last_price
         return stock
@@ -128,7 +131,7 @@ class TestStockMonitor(unittest.TestCase):
 
     def test_filter_sort_is_interesting_0(self):
         self.s.N = -100
-        self.s.mdd = 0.1
+        self.s.cur = 0.1
         self.s.worth = [1, 2, 3, 4]
         self.assertEqual([], self.filter_sort())
 
@@ -141,7 +144,7 @@ class TestStockMonitor(unittest.TestCase):
     def test_filter_sort_is_interesting_2(self):
         s = self.s
         s.last_price = 2
-        s.mdd = 0.5
+        s.cur = 0.5
         self.assertEqual([s], self.filter_sort())
 
     def test_filter_sort_is_interesting_3(self):
@@ -165,7 +168,20 @@ def main(codes):
 
 if __name__ == '__main__':
     codes = [
-        '00700',    # 腾讯
+        # 美股
         'MSFT',     # 微软
+        'NVDA',     # 英伟达
+        'TSLA',     # 特斯拉
+        'AAPL',     # 苹果
+        'GOOG',     # 谷歌
+        'AMZN',     # 亚马逊
+        'META',     # Meta
+        'PDD',      # 拼多多
+        'JD',       # 京东
+        'BABA',     # 阿里巴巴
+        # 港股
+        '00700',    # 腾讯
+        '01810',    # 小米
+        '03690',    # 美团
     ]
     main(codes)

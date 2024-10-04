@@ -81,7 +81,7 @@ class Monitor:
     def format(self):
         results = self.filter_sort()
         if not results:
-            return ''
+            return None
 
         # construct the message to send to subscribers
         lines = list(map(str, results))

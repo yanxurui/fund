@@ -21,7 +21,6 @@ class MyStock(MyFund):
         self.name = hist.iloc[-1]['股票名称']
         self.worth = hist['收盘'].tolist() # The last row contains the current real-time price
         self.last_price = hist.iloc[-1].to_dict()
-        logging.info('{0}:{1}'.format(self.code, self.name))
 
 class StockMonitor(Monitor):
     # override the filter_sort method
@@ -46,18 +45,18 @@ class StockMonitor(Monitor):
             with open('snapshot.json', 'r', encoding='utf-8') as f:
                 snapshot = json.load(f)
         for s in self.success:
+            s.trading = False
             if s.code in snapshot:
                 if s.last_price != snapshot[s.code]['last_price']:
                     # it's either because it's not trading time or the price has changed since last check
                     s.trading = True
-                else:
-                    s.trading = False
             else:
                 # trading will be False this is the first time to check
                 # use 2000-01-01 00:00:00 as the initial value
                 snapshot[s.code] = {
                     'last_notified_time': '2000-01-01 00:00:00',
                 }
+            logging.info('{0},{1},{2},{3},{4},{5:.0f}'.format(s.code, s.name, s.last_price['收盘'], s.trading, s.N, s.cur))
             snapshot[s.code]['datetime'] = now.strftime(date_format)
             snapshot[s.code]['N'] = s.N
             snapshot[s.code]['trading'] = s.trading
@@ -180,7 +179,7 @@ if __name__ == '__main__':
         'AMZN',     # 亚马逊
         'META',     # Meta
         'PDD',      # 拼多多
-        'JD',       # 京东
+        '京东',     # 京东
         'BABA',     # 阿里巴巴
         # 港股
         '00700',    # 腾讯

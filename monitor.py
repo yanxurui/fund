@@ -60,6 +60,12 @@ class Monitor:
         actual_time = time.time() - start
         logging.info('total time needed is %.2f, actual time spent is %.2f', total_time, actual_time)
 
+        # sort self.success by the order in funds
+        # Create a mapping of the index of each object in list1
+        index_map = {obj: index for index, obj in enumerate(funds)}
+        # Sort list2 based on the index in list1
+        self.success.sort(key=lambda obj: index_map[obj])
+
         self.output()
         end = time.time()
         logging.info('Finishied in {0:.2f} seconds'.format(end - start))

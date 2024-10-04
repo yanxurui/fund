@@ -2,3 +2,4 @@ requests>=2.22.0
 PyExecJS>=1.5.1
 tqdm>=4.42.1             
 efinance>=0.5.2
+gevent>=24.2.1

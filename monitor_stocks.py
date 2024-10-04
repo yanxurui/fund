@@ -165,6 +165,9 @@ class TestStockMonitor(unittest.TestCase):
 def main(codes):
     StockMonitor().process([MyStock(c) for c in codes])
 
+    # Need to close the session manually to avoid the error below:
+    # sys:1: ResourceWarning: unclosed <socket object, fd=3, family=2, type=1, proto=6>
+    ef.shared.session.close()
 
 if __name__ == '__main__':
     codes = [

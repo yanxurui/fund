@@ -3,8 +3,8 @@ import os
 import logging
 import unittest
 
-from fund import Fund, TestFund
 from monitor import Monitor
+from fund import Fund, TestFund
 
 class MyFund(Fund):
     '''
@@ -37,7 +37,7 @@ class MyFund(Fund):
         now = self.cur > 0 and self.cur == self.mdd
         # 当前出现历史最大或较大(>20%)的回撤
         if now or self.cur > 0.2:
-            if v[-1] .isdigit():
+            if v[-1].isdigit():
                 # avoid output like -9622%
                 v += ','
             v += '{:.0f}%'.format(100*self.cur)
@@ -145,8 +145,9 @@ class TestMyFund(unittest.TestCase):
         fake_fund.name = '123456789012'
 
         # scenario #1
-        fake_fund.N = -3
+        fake_fund.N = -1
         fake_fund.worth = [1.2, 0.5, 1, 0.9]
+        fake_fund.mdd, fake_fund.cur = fake_fund.cal_mdd()
         f = str(fake_fund)
         print(f)
         self.assertFalse('🅢' in f)
@@ -157,6 +158,7 @@ class TestMyFund(unittest.TestCase):
         # scenario #2
         fake_fund.N = -1
         fake_fund.worth = [1.5, 0.5, 1, 0.7]
+        fake_fund.mdd, fake_fund.cur = fake_fund.cal_mdd()
         f = str(fake_fund)
         print(f)
         self.assertFalse('🅢' in f)
@@ -167,6 +169,7 @@ class TestMyFund(unittest.TestCase):
 
         # scenario #3
         fake_fund.worth = [1.2, 0.8, 1, 0.6]
+        fake_fund.mdd, fake_fund.cur = fake_fund.cal_mdd()
         f = str(fake_fund)
         print(f)
         self.assertFalse('🅢' in f)
@@ -186,6 +189,7 @@ class TestMyFund(unittest.TestCase):
         # scenario #5
         fake_fund.N = -2
         fake_fund.worth = [0.8, 1, 0.6]
+        fake_fund.mdd, fake_fund.cur = fake_fund.cal_mdd()
         f = str(fake_fund)
         print(f)
         self.assertTrue('🅢' in f)

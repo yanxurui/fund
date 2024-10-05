@@ -15,14 +15,18 @@ import CONFIG
 def html_table(lol, head=True):
     def yield_lines():
         assert len(lol) > 0, 'Invalid input: empty list'
-        yield '<table style="border-collapse:collapse; border: 1px solid; ">'
+        yield '<table style="border-collapse:collapse; border: 1px solid; width: 100%; max-width: 600px;">'
         for i, sublist in enumerate(lol):
             yield '  <tr>'
             for j, e in enumerate(sublist):
+                # Add text-align: right for the last column
+                style = ''
+                if j == len(sublist) - 1:
+                    style = ' style="text-align: right;"'
                 if head and i == 0:
-                    yield '    <th>{}</th>'.format(e)
+                    yield '    <th{}>{}</th>'.format(style, e)
                 else:
-                    yield '    <td>{}</td>'.format(e)
+                    yield '    <td{}>{}</td>'.format(style, e)
             yield '  </tr>'
         yield '</table>'
     return '\n'.join(yield_lines())

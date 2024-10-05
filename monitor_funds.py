@@ -3,8 +3,8 @@ import os
 import logging
 import unittest
 
-from monitor import Monitor
 from fund import Fund, TestFund
+from monitor import Monitor
 
 class MyFund(Fund):
     '''

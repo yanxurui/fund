@@ -5,9 +5,9 @@ import logging
 import json
 from datetime import datetime
 
-from monitor import Monitor
-# monkey patch needs to be done before this
 import efinance as ef
+
+from monitor import Monitor
 from monitor_funds import MyFund
 
 
@@ -174,6 +174,9 @@ def main(codes):
 if __name__ == '__main__':
     codes = [
         # 美股
+        'NDX',      # 纳指ETF
+        'SPY',      # 标普500
+        'DJI',      # 道琼斯
         'MSFT',     # 微软
         'NVDA',     # 英伟达
         'TSLA',     # 特斯拉
@@ -181,6 +184,9 @@ if __name__ == '__main__':
         'GOOG',     # 谷歌
         'AMZN',     # 亚马逊
         'META',     # Meta
+        'NFLX',     # Netflix
+        'TSM',      # 台积电
+        'QCOM',     # 高通
         'PDD',      # 拼多多
         '京东',     # 京东
         'BABA',     # 阿里巴巴
@@ -188,5 +194,8 @@ if __name__ == '__main__':
         '00700',    # 腾讯
         '01810',    # 小米
         '03690',    # 美团
+        # A股
+        '002594',   # 比亚迪
+        '黄金ETF-SPDR',# 黄金
     ]
     main(codes)

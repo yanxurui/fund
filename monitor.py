@@ -5,11 +5,7 @@ import time
 import logging
 import unittest
 from datetime import datetime
-
-import gevent
-from gevent import monkey
-from gevent.pool import Pool
-monkey.patch_all()
+from concurrent.futures import ThreadPoolExecutor
 
 import utils
 from fund import Fund, TestFund
@@ -55,11 +51,11 @@ class Monitor:
                 self.failed.append(fund.code)
             return time.time() - start
 
-        pool = Pool(5)
         start = time.time()
         total_time = 0
-        for t in pool.imap_unordered(process_async, funds):
-            total_time += t
+        # Use ThreadPoolExecutor for concurrent requests
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            total_time = sum(executor.map(process_async, funds))
         actual_time = time.time() - start
         logging.info('total time needed is %.2f, actual time spent is %.2f', total_time, actual_time)
 

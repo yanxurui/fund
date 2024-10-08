@@ -59,7 +59,7 @@ class StockMonitor(Monitor):
                 snapshot[s.code] = {
                     'last_notified_time': '2000-01-01 00:00:00',
                 }
-            logging.info('{0},{1},{2},{3},{4},{5:.0f}'.format(s.code, s.name, s.last_price['收盘'], s.trading, s.N, s.cur))
+            logging.info('{0},{1},{2},{3},{4},{5:.0f}'.format(s.code, s.name, s.last_price['收盘'], s.trading, s.N, 100*s.cur))
             snapshot[s.code]['datetime'] = now.strftime(date_format)
             snapshot[s.code]['N'] = s.N
             snapshot[s.code]['trading'] = s.trading

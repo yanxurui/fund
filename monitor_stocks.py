@@ -17,7 +17,7 @@ class MyStock(MyFund):
         self.last_price = None
 
     def download(self):
-        hist = ef.stock.get_quote_history(self.code, fqt=0)
+        hist = ef.stock.get_quote_history(self.code, fqt=1)
         self.name = hist.iloc[-1]['股票名称']
         self.worth = hist['收盘'].tolist() # The last row contains the current real-time price
         self.last_price = hist.iloc[-1].to_dict()
@@ -196,6 +196,9 @@ if __name__ == '__main__':
         '03690',    # 美团
         # A股
         '002594',   # 比亚迪
+        # 其他
         '黄金ETF-SPDR',# 黄金
+        'USDCNY',   # 美元人民币
+        'IBIT',     # 比特币
     ]
     main(codes)

@@ -47,7 +47,7 @@ class Monitor:
                 fund.trade()
                 self.success.append(fund)
             except:
-                logging.exception('failed to get fund {0}'.format(fund.code))
+                logging.exception('failed to get/process fund {0}'.format(fund.code))
                 self.failed.append(fund.code)
             return time.time() - start
 

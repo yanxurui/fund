@@ -43,9 +43,22 @@ class StockMonitor(Monitor):
         #     'dateime': '2021-08-01 12:00:00',
         #     'N': -356,
         #     'trading': True,
-        #     'last_price': 100,
-        #      'mdd': 0.2,
-        #      'cur': 0.1,
+        #     "last_price": {
+        #         "股票名称": "沪深300",
+        #         "股票代码": "000300",
+        #         "日期": "2025-08-18",
+        #         "开盘": 4218.25,
+        #         "收盘": 4265.4,
+        #         "最高": 4265.65,
+        #         "最低": 4203.42,
+        #         "成交量": 184663689,
+        #         "成交额": 397872924912.2,
+        #         "振幅": 1.48,
+        #         "涨跌幅": 1.5,
+        #         "涨跌额": 63.05,
+        #         "换手率": 0.56
+        #       },
+        #     'cur': 0.1,
         #     'last_notified_time': '2021-08-01 12:00:00',
         # }
         snapshot = {}
@@ -81,7 +94,10 @@ class StockMonitor(Monitor):
             # 2. drawdown is greater than 20%
             if s.cur > 0.2:
                 return True
-            # 3. reached the highest price
+            # 3. higher than the past 1000 days
+            if s.N > 1000:
+                return True
+            # 4. reached the highest price
             if s.N == len(s.worth) - 1:
                 return True
             return False
@@ -89,8 +105,8 @@ class StockMonitor(Monitor):
         results = []
         for s in self.success:
             if is_interesting(s):
-                # filter out the stocks notified within a day
-                if (now - datetime.strptime(snapshot[s.code]['last_notified_time'], date_format)).days >= 1:
+                # filter out the stocks notified within 7 days
+                if (now - datetime.strptime(snapshot[s.code]['last_notified_time'], date_format)).days >= 7:
                     results.append(s)
                     snapshot[s.code]['last_notified_time'] = now.strftime(date_format)
 
@@ -192,17 +208,27 @@ if __name__ == '__main__':
         'NFLX',     # Netflix
         'TSM',      # 台积电
         'QCOM',     # 高通
+        'COST',     # 好市多
+        'TM',       # 丰田
+        # 中概
         'PDD',      # 拼多多
         '京东',     # 京东
         'BABA',     # 阿里巴巴
         # 港股
+        'HSI',      # 恒生指数
         '00700',    # 腾讯
         '01810',    # 小米
         '03690',    # 美团
         # A股
+        'SZZS',     # 上证指数
+        '000300',   # 沪深300
         '002594',   # 比亚迪
+        '002352',   # 顺丰
+        # 债券
+        'US10Y',   # 美债10年
+        'CN10Y',   # 国债10年
         # 其他
-        '黄金ETF-SPDR',# 黄金
+        '黄金ETF-SPDR', # 黄金
         'USDCNY',   # 美元人民币
         'IBIT',     # 比特币
     ]

@@ -28,7 +28,7 @@ HTML_TEMPLATE = '''
 
 class Monitor:
     """Base monitoring class for processing assets and sending notifications"""
-    
+
     def __init__(self):
         self.success = []
         self.failed = []
@@ -40,7 +40,7 @@ class Monitor:
         if self.TEST:
             logging.info('TEST mode')
             assets[:] = assets[:2]  # Modify the original list in place
-        
+
         logging.info('-' * 50)
         logging.info(f'Starting to process {len(assets)} assets')
         start_time = time.time()
@@ -69,10 +69,10 @@ class Monitor:
         # Execute downloads concurrently
         concurrent_start = time.time()
         total_processing_time = 0
-        
+
         with ThreadPoolExecutor(max_workers=5) as executor:
             total_processing_time = sum(executor.map(process_single_asset, assets))
-        
+
         actual_time = time.time() - concurrent_start
         logging.info(f'Processing time: {total_processing_time:.2f}s total, {actual_time:.2f}s actual')
         logging.info(f'Success: {len(self.success)}, Failed: {len(self.failed)}')
@@ -85,37 +85,37 @@ class Monitor:
     def _generate_and_send_notification(self):
         """Generate formatted notification and send if needed"""
         html_message = self._create_notification_content()
-        
+
         if not html_message:
             logging.info('No notification needed - no interesting assets found')
             return
-            
+
         self._send_notification(html_message)
 
     def _create_notification_content(self):
         """Create HTML notification content from processed results"""
         interesting_assets = self.filter_sort()
-        
+
         if not interesting_assets:
             return None
 
         # Format asset information
         asset_lines = [str(asset) for asset in interesting_assets]
         html_table = utils.html_table([line.split(':') for line in asset_lines], head=False)
-        
+
         # Add error information if any
         if self.failed:
             error_msg = 'Failed: ' + ','.join(self.failed)
             asset_lines.append(error_msg)
             html_table += f'\n<p style="color:red">{error_msg}</p>'
-        
+
         # Log text version and return HTML
         text_message = '\n'.join(asset_lines)
         html_message = HTML_TEMPLATE.format(html_table)
-        
+
         logging.info(f'Notification content:\n{text_message}')
         logging.debug(f'HTML content:\n{html_message}')
-        
+
         return html_message
 
     def _send_notification(self, html_message):
@@ -123,7 +123,7 @@ class Monitor:
         if self.TEST:
             logging.info('Skipping email notification in test mode')
             return
-            
+
         utils.send_email(
             ['yanxurui1993@qq.com'],
             self.subject,

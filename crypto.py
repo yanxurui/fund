@@ -25,7 +25,7 @@ class Crypto(BaseAsset):
             'timeout': 30000,
             # 'enableRateLimit': True,
         })
-        
+
         try:
             # Fetch all available OHLCV data (1 day timeframe)
             # We need to paginate to get all historical data since exchanges have limits
@@ -33,7 +33,7 @@ class Crypto(BaseAsset):
             limit = 1000  # Maximum candles per request for most exchanges
             since = None  # Start from the earliest available data
             i = 0
-            
+
             while True:
                 i += 1
                 try:
@@ -44,7 +44,7 @@ class Crypto(BaseAsset):
                     else:
                         # Subsequent requests - get data from a specific timestamp
                         ohlcv_batch = exchange.fetch_ohlcv(self.symbol, '1d', since=since, limit=limit)
-                    
+
                     if not ohlcv_batch:
                         logging.warning(f"No data returned for {self.symbol} on batch {i}. Stopping pagination.")
                         break
@@ -71,26 +71,26 @@ class Crypto(BaseAsset):
                     first_candle_date = datetime.fromtimestamp(ohlcv_batch[0][0] / 1000).strftime('%Y-%m-%d')
                     last_candle_date = datetime.fromtimestamp(ohlcv_batch[-1][0] / 1000).strftime('%Y-%m-%d')
                     logging.debug(f"Fetched {len(ohlcv_batch)} candles for {self.symbol} (batch {i}) from {first_candle_date} to {last_candle_date}, next since: {since_date}")
-                        
+
                 except Exception as e:
                     logging.exception(f"Error during pagination for {self.symbol}: {e}")
                     break
-            
+
             if not all_ohlcv:
                 raise Exception(f"No data returned for {self.symbol}")
-            
+
             # Convert to DataFrame for easier handling
             df = pd.DataFrame(all_ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             df['datetime'] = pd.to_datetime(df['timestamp'], unit='ms')
 
             # Remove duplicates and sort by timestamp
             df = df.drop_duplicates(subset=['timestamp']).sort_values('timestamp').reset_index(drop=True)
-            
+
             logging.info(f"Fetched {len(df)} days of historical data for {self.symbol} (from {df['datetime'].iloc[0].strftime('%Y-%m-%d')} to {df['datetime'].iloc[-1].strftime('%Y-%m-%d')})")
-            
+
             # Set worth (closing prices)
             self.worth = df['close'].tolist()
-                
+
         except Exception as e:
             logging.error(f"Error fetching data for {self.symbol}: {e}")
             raise

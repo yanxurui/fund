@@ -13,7 +13,7 @@ class BaseAsset(ABC):
         self.N = 0
         self.mdd = None
         self.cur = None
-        
+
     def __str__(self):
         k = '{0}({1})'.format(self.name, self.code)
         v = str(self.N)
@@ -87,11 +87,11 @@ class BaseAsset(ABC):
                 retry -= 1
                 if retry < 0:
                     raise
-        
+
         self.N = self.buy_or_sell(self.worth)
         self.mdd, self.cur = self.cal_mdd()
         return self.N
-        
+
     @abstractmethod
     def download(self):
         """Download asset data - must be implemented by subclasses"""

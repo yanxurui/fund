@@ -135,21 +135,6 @@ Monitor (monitor.py) - 基础监控类
 - **MonitorWithCriteria测试** - 股票和加密货币监控逻辑
 - **运行所有测试**: `python -m unittest fund.TestFund monitor_with_criteria.TestStockMonitor monitor_with_criteria.TestCryptoMonitor -v`
 
-### 调用顺序
-以monitor_stocks为例
-```
-process (monitor)
-    foreach asset
-        trade (base_asset)
-            download
-    output
-        format
-            filter_sort (monitor_with_criteria)
-                is_interesting
-            create html
-        send_email
-```
-
 
 ## 一些个人的思考
 

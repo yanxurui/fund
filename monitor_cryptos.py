@@ -41,6 +41,6 @@ if __name__ == '__main__':
         # 'SUI/USDT',     # Sui
         # 'SEI/USDT',     # Sei
     ]
-    
+
     print("Monitoring cryptos...")
     main_cryptos(crypto_symbols, 'binance')

@@ -39,7 +39,7 @@ class FundBaseline(Fund):
                 retry -= 1
                 if retry < 0:
                     raise
-        
+
         # run the strategy
         self.N = self.buy_or_sell(self.worth)
         return self.N

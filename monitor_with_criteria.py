@@ -60,7 +60,7 @@ class MonitorWithCriteria(Monitor):
         if os.path.exists(self.config.snapshot_file):
             with open(self.config.snapshot_file, 'r', encoding='utf-8') as f:
                 snapshot = json.load(f)
-        
+
         for s in self.success:
             # Handle different asset types for trading detection
             if self.asset_type == 'stock':
@@ -85,11 +85,11 @@ class MonitorWithCriteria(Monitor):
                     snapshot[s.code] = {
                         'last_notified_time': '2000-01-01 00:00:00',
                     }
-            
+
             # Log current state
             current_price = s.worth[-1]
             logging.info(f'{s.code},{s.name},{current_price},{s.trading},{s.N},{100*s.cur:.0f}')
-            
+
             # Update snapshot
             snapshot[s.code]['datetime'] = now.strftime(date_format)
             snapshot[s.code]['N'] = s.N
@@ -102,7 +102,7 @@ class MonitorWithCriteria(Monitor):
             # Check if asset is trading
             if not s.trading:
                 return False
-            
+
             # Use config thresholds for different conditions
             # 1. lower than the past N days
             if s.N < self.config.low_threshold:
@@ -142,12 +142,12 @@ class MonitorWithCriteriaTestCase(unittest.TestCase):
         # Skip if this base class is being run directly
         if self.__class__.__name__ == 'MonitorWithCriteriaTestCase':
             self.skipTest("Abstract base class - should not be run directly")
-            
+
         # Clean up any existing snapshot files
         for config in ASSET_CONFIGS.values():
             if os.path.exists(config.snapshot_file):
                 os.remove(config.snapshot_file)
-        
+
         # To be set by subclasses
         self.asset_type = None
         self.config = None
@@ -186,7 +186,7 @@ class MonitorWithCriteriaTestCase(unittest.TestCase):
         else:
             # Cryptos are always trading
             pass
-    
+
     # Common test methods that work for both asset types
     def test_empty_results(self):
         """Empty success list should return empty results"""
@@ -200,7 +200,7 @@ class MonitorWithCriteriaTestCase(unittest.TestCase):
         asset.N = -100  # Within normal range for both assets
         asset.cur = 0.1  # Below drawdown threshold for both assets
         self._ensure_trading(asset)
-            
+
         self.monitor.success = [asset]
         results = self.monitor.filter_sort()
         self.assertEqual([], results)
@@ -210,7 +210,7 @@ class MonitorWithCriteriaTestCase(unittest.TestCase):
         asset = self.create_asset()
         asset.N = self.config.low_threshold - 100  # Below threshold
         self._ensure_trading(asset)
-            
+
         self.monitor.success = [asset]
         results = self.monitor.filter_sort()
         self.assertEqual([asset], results)
@@ -220,7 +220,7 @@ class MonitorWithCriteriaTestCase(unittest.TestCase):
         asset = self.create_asset()
         asset.cur = self.config.drawdown_threshold + 0.1  # Above drawdown threshold
         self._ensure_trading(asset)
-            
+
         self.monitor.success = [asset]
         results = self.monitor.filter_sort()
         self.assertEqual([asset], results)
@@ -230,7 +230,7 @@ class MonitorWithCriteriaTestCase(unittest.TestCase):
         asset = self.create_asset()
         asset.N = self.config.high_threshold + 100  # Above threshold
         self._ensure_trading(asset)
-            
+
         self.monitor.success = [asset]
         results = self.monitor.filter_sort()
         self.assertEqual([asset], results)
@@ -241,7 +241,7 @@ class MonitorWithCriteriaTestCase(unittest.TestCase):
         asset.worth = [40, 50, 60]  # 3 data points
         asset.N = 2  # Index of last element (historical max)
         self._ensure_trading(asset)
-            
+
         self.monitor.success = [asset]
         results = self.monitor.filter_sort()
         self.assertEqual([asset], results)
@@ -251,13 +251,13 @@ class MonitorWithCriteriaTestCase(unittest.TestCase):
         asset = self.create_asset()
         asset.N = self.config.low_threshold - 100  # Below threshold to make it interesting
         self._ensure_trading(asset)
-            
+
         self.monitor.success = [asset]
-        
+
         # First notification should succeed
         results = self.monitor.filter_sort()
         self.assertEqual([asset], results)
-        
+
         # Second notification should be filtered out (within notification period)
         results = self.monitor.filter_sort()
         self.assertEqual([], results)
@@ -278,11 +278,11 @@ class TestStockMonitor(MonitorWithCriteriaTestCase):
         """Stock-specific test: trading detection based on price changes"""
         asset = self.create_stock('007')
         self.monitor.success = [asset]
-        
+
         # First run - should not be trading (same price)
         self.monitor.filter_sort()
         self.assertEqual(False, asset.trading)
-        
+
         # Second run with different price - should be trading
         asset.last_price = {'收盘': 2}
         self.monitor.filter_sort()
@@ -304,7 +304,7 @@ class TestCryptoMonitor(MonitorWithCriteriaTestCase):
         """Crypto-specific test: should always be trading (24/7 markets)"""
         asset = self.create_crypto('BTC/USDT')
         self.monitor.success = [asset]
-        
+
         # Crypto should always be trading
         self.monitor.filter_sort()
         self.assertEqual(True, asset.trading)

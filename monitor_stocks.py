@@ -8,7 +8,7 @@ from stock import Stock
 def main_stocks(codes):
     """Monitor stock assets"""
     MonitorWithCriteria('stock').process([Stock(c) for c in codes])
-    
+
     # Need to close the session manually to avoid the error below:
     # sys:1: ResourceWarning: unclosed <socket object, fd=3, family=2, type=1, proto=6>
     ef.shared.session.close()
@@ -55,6 +55,6 @@ if __name__ == '__main__':
         'USDCNY',   # 美元人民币
         'IBIT',     # 比特币
     ]
-    
+
     print("Monitoring stocks...")
     main_stocks(stock_codes)

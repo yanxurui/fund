@@ -4,14 +4,8 @@ import unittest
 import logging
 import json
 from datetime import datetime
-from abc import ABC, abstractmethod
-import pandas as pd
-
-import efinance as ef
-import ccxt
 
 from monitor import Monitor
-from monitor_funds import MyFund
 
 
 class AssetConfig:
@@ -50,125 +44,7 @@ ASSET_CONFIGS = {
 }
 
 
-class BaseAsset(MyFund, ABC):
-    """Base class for all asset types"""
-    def __init__(self, code, asset_type):
-        super().__init__(code)
-        self.asset_type = asset_type
-        self.config = ASSET_CONFIGS[asset_type]
-        
-    @abstractmethod
-    def download(self):
-        """Download asset data - must be implemented by subclasses"""
-        pass
-
-
-class MyStock(BaseAsset):
-    def __init__(self, code):
-        super().__init__(code, 'stock')
-        self.last_price = None
-
-    def download(self):
-        # fqt
-            # 0: 不复权
-            # 1: 前复权 (default)
-            # 2: 后复权
-            # 使用后复权因为东方财富返回的前复权历史数据可能包含负数，比如NVDA，会影响计算最大回撤
-        hist = ef.stock.get_quote_history(self.code, fqt=2)
-        self.name = hist.iloc[-1]['股票名称']
-        self.worth = hist['收盘'].tolist() # The last row contains the current real-time price
-        self.last_price = hist.iloc[-1].to_dict()
-
-
-class MyCrypto(BaseAsset):
-    def __init__(self, symbol, exchange_name='binance'):
-        # For crypto, we use the symbol as the code (e.g., 'BTC/USDT')
-        super().__init__(symbol, 'crypto')
-        self.symbol = symbol
-        self.exchange_name = exchange_name
-        self.name = self.symbol.replace('/', '_')  # e.g., BTC/USDT -> BTC_USDT
-
-    def download(self):
-        # Initialize the exchange
-        exchange_class = getattr(ccxt, self.exchange_name)
-        exchange = exchange_class({
-            # 'apiKey': '',  # Add your API key if needed
-            # 'secret': '',  # Add your secret if needed
-            'timeout': 30000,
-            # 'enableRateLimit': True,
-        })
-        
-        try:
-            # Fetch all available OHLCV data (1 day timeframe)
-            # We need to paginate to get all historical data since exchanges have limits
-            all_ohlcv = []
-            limit = 1000  # Maximum candles per request for most exchanges
-            since = None  # Start from the earliest available data
-            i = 0
-            
-            while True:
-                i += 1
-                try:
-                    # Fetch a batch of data - a list of [timestamp, open, high, low, close, volume]
-                    if since is None:
-                        # First request - get the most recent data
-                        ohlcv_batch = exchange.fetch_ohlcv(self.symbol, '1d', limit=limit)
-                    else:
-                        # Subsequent requests - get data from a specific timestamp
-                        ohlcv_batch = exchange.fetch_ohlcv(self.symbol, '1d', since=since, limit=limit)
-                    
-                    if not ohlcv_batch:
-                        logging.warning(f"No data returned for {self.symbol} on batch {i}. Stopping pagination.")
-                        break
-
-                    # Prepend older data to the beginning of our list
-                    all_ohlcv = ohlcv_batch + all_ohlcv
-
-                    # Check if we've reached the beginning
-                    # In this case, this batch may overlap with the previous batch
-                    if since != None and ohlcv_batch[0][0] > since:
-                        logging.warning(f"We've reached the beginning of available data for {self.symbol}. Stopping pagination.")
-                        break
-
-                    # If we got less than the limit, we've reached the end
-                    if len(ohlcv_batch) < limit:
-                        logging.info(f"Reached the end of available data for {self.symbol} on batch {i}. Stopping pagination.")
-                        break
-
-                    # Set since to get older data
-                    since = ohlcv_batch[0][0] - (24 * 60 * 60 * 1000 * limit)
-
-                    # Convert since timestamp to human readable format for logging
-                    since_date = datetime.fromtimestamp(since / 1000).strftime('%Y-%m-%d %H:%M:%S') if since else 'N/A'
-                    first_candle_date = datetime.fromtimestamp(ohlcv_batch[0][0] / 1000).strftime('%Y-%m-%d')
-                    last_candle_date = datetime.fromtimestamp(ohlcv_batch[-1][0] / 1000).strftime('%Y-%m-%d')
-                    logging.info(f"Fetched {len(ohlcv_batch)} candles for {self.symbol} (batch {i}) from {first_candle_date} to {last_candle_date}, next since: {since_date}")
-                        
-                except Exception as e:
-                    logging.exception(f"Error during pagination for {self.symbol}: {e}")
-                    break
-            
-            if not all_ohlcv:
-                raise Exception(f"No data returned for {self.symbol}")
-            
-            # Convert to DataFrame for easier handling
-            df = pd.DataFrame(all_ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-            df['datetime'] = pd.to_datetime(df['timestamp'], unit='ms')
-
-            # Remove duplicates and sort by timestamp
-            df = df.drop_duplicates(subset=['timestamp']).sort_values('timestamp').reset_index(drop=True)
-            
-            logging.info(f"Fetched {len(df)} days of historical data for {self.symbol} (from {df['datetime'].iloc[0].strftime('%Y-%m-%d')} to {df['datetime'].iloc[-1].strftime('%Y-%m-%d')})")
-            
-            # Set worth (closing prices)
-            self.worth = df['close'].tolist()
-                
-        except Exception as e:
-            logging.error(f"Error fetching data for {self.symbol}: {e}")
-            raise
-
-
-class UnifiedMonitor(Monitor):
+class MonitorWithCriteria(Monitor):
     def __init__(self, asset_type):
         super().__init__()
         self.asset_type = asset_type
@@ -259,12 +135,12 @@ class UnifiedMonitor(Monitor):
         return results
 
 
-class UnifiedMonitorTestCase(unittest.TestCase):
-    '''Base test class for unified monitor functionality'''
+class MonitorWithCriteriaTestCase(unittest.TestCase):
+    '''Base test class for monitor with criteria functionality'''
 
     def setUp(self):
         # Skip if this base class is being run directly
-        if self.__class__.__name__ == 'UnifiedMonitorTestCase':
+        if self.__class__.__name__ == 'MonitorWithCriteriaTestCase':
             self.skipTest("Abstract base class - should not be run directly")
             
         # Clean up any existing snapshot files
@@ -284,7 +160,8 @@ class UnifiedMonitorTestCase(unittest.TestCase):
                 os.remove(config.snapshot_file)
 
     def create_stock(self, code="007", N=0, cur=0, worth=[], last_price={'收盘': 1}):
-        stock = MyStock(code)
+        from stock import Stock
+        stock = Stock(code)
         stock.N = N
         stock.cur = cur
         stock.worth = worth or [1]
@@ -292,7 +169,8 @@ class UnifiedMonitorTestCase(unittest.TestCase):
         return stock
 
     def create_crypto(self, symbol="BTC/USDT", N=0, cur=0, worth=[]):
-        crypto = MyCrypto(symbol)
+        from crypto import Crypto
+        crypto = Crypto(symbol)
         crypto.N = N
         crypto.cur = cur
         crypto.worth = worth or [45000]
@@ -385,7 +263,7 @@ class UnifiedMonitorTestCase(unittest.TestCase):
         self.assertEqual([], results)
 
 
-class TestStockMonitor(UnifiedMonitorTestCase):
+class TestStockMonitor(MonitorWithCriteriaTestCase):
     '''Tests for stock monitoring functionality'''
 
     def setUp(self):
@@ -393,7 +271,7 @@ class TestStockMonitor(UnifiedMonitorTestCase):
         asset_type = 'stock'
         self.asset_type = asset_type
         self.config = ASSET_CONFIGS[asset_type]
-        self.monitor = UnifiedMonitor(asset_type)
+        self.monitor = MonitorWithCriteria(asset_type)
         self.create_asset = self.create_stock
 
     def test_trading_detection(self):
@@ -411,7 +289,7 @@ class TestStockMonitor(UnifiedMonitorTestCase):
         self.assertEqual(True, asset.trading)
 
 
-class TestCryptoMonitor(UnifiedMonitorTestCase):
+class TestCryptoMonitor(MonitorWithCriteriaTestCase):
     '''Tests for crypto monitoring functionality'''
 
     def setUp(self):
@@ -419,7 +297,7 @@ class TestCryptoMonitor(UnifiedMonitorTestCase):
         asset_type = 'crypto'
         self.asset_type = asset_type
         self.config = ASSET_CONFIGS[asset_type]
-        self.monitor = UnifiedMonitor(asset_type)
+        self.monitor = MonitorWithCriteria(asset_type)
         self.create_asset = self.create_crypto
 
     def test_always_trading(self):
@@ -430,98 +308,3 @@ class TestCryptoMonitor(UnifiedMonitorTestCase):
         # Crypto should always be trading
         self.monitor.filter_sort()
         self.assertEqual(True, asset.trading)
-
-
-def main_stocks(codes):
-    """Monitor stock assets"""
-    UnifiedMonitor('stock').process([MyStock(c) for c in codes])
-    
-    # Need to close the session manually to avoid the error below:
-    # sys:1: ResourceWarning: unclosed <socket object, fd=3, family=2, type=1, proto=6>
-    ef.shared.session.close()
-
-
-def main_cryptos(symbols, exchange_name='binance'):
-    """Monitor crypto assets"""
-    cryptos = [MyCrypto(symbol, exchange_name) for symbol in symbols]
-    UnifiedMonitor('crypto').process(cryptos)
-
-
-if __name__ == '__main__':
-    # Stock codes from original monitor_stocks.py
-    stock_codes = [
-        # 美股
-        'NDX',      # 纳指ETF
-        'SPY',      # 标普500
-        'DJI',      # 道琼斯
-        'MSFT',     # 微软
-        'NVDA',     # 英伟达
-        'TSLA',     # 特斯拉
-        'AAPL',     # 苹果
-        'GOOG',     # 谷歌
-        'AMZN',     # 亚马逊
-        'META',     # Meta
-        'NFLX',     # Netflix
-        'TSM',      # 台积电
-        'QCOM',     # 高通
-        'COST',     # 好市多
-        'TM',       # 丰田
-        # 中概
-        'PDD',      # 拼多多
-        '京东',     # 京东
-        'BABA',     # 阿里巴巴
-        # 港股
-        'HSI',      # 恒生指数
-        '00700',    # 腾讯
-        '01810',    # 小米
-        '03690',    # 美团
-        # A股
-        'SZZS',     # 上证指数
-        '000300',   # 沪深300
-        '002594',   # 比亚迪
-        '002352',   # 顺丰
-        # 债券
-        'US10Y',   # 美债10年
-        'CN10Y',   # 国债10年
-        # 其他
-        '黄金ETF-SPDR', # 黄金
-        'USDCNY',   # 美元人民币
-        'IBIT',     # 比特币
-    ]
-    
-    # Crypto symbols from original monitor_cryptos.py
-    crypto_symbols = [
-        # Major cryptocurrencies
-        'BTC/USDT',     # Bitcoin
-        'ETH/USDT',     # Ethereum
-        # 'BNB/USDT',     # Binance Coin
-        # 'XRP/USDT',     # Ripple
-        # 'ADA/USDT',     # Cardano
-        'SOL/USDT',     # Solana
-        'DOGE/USDT',    # Dogecoin
-        # 'DOT/USDT',     # Polkadot
-        # 'MATIC/USDT',   # Polygon
-        # 'SHIB/USDT',    # Shiba Inu
-        # 'AVAX/USDT',    # Avalanche
-        # 'ATOM/USDT',    # Cosmos
-        'LINK/USDT',    # Chainlink
-        # 'UNI/USDT',     # Uniswap
-        # 'LTC/USDT',     # Litecoin
-        # # DeFi tokens
-        # 'AAVE/USDT',    # Aave
-        # 'COMP/USDT',    # Compound
-        # 'SUSHI/USDT',   # SushiSwap
-        # 'CRV/USDT',     # Curve
-        # 'YFI/USDT',     # Yearn Finance
-        # # Layer 2 and new projects
-        # 'ARB/USDT',     # Arbitrum
-        # 'OP/USDT',      # Optimism
-        # 'APT/USDT',     # Aptos
-        # 'SUI/USDT',     # Sui
-        # 'SEI/USDT',     # Sei
-    ]
-    
-    print("Monitoring stocks...")
-    main_stocks(stock_codes)
-    print("\nMonitoring cryptos...")
-    main_cryptos(crypto_symbols, 'binance')

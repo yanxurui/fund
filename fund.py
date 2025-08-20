@@ -1,55 +1,21 @@
 # -*- coding: UTF-8 -*-
 import re
-import unittest
-import traceback
 import logging
+import unittest
 from datetime import datetime
-
 import execjs
 import requests
 
-class Fund:
+from base_asset import BaseAsset
+
+
+class Fund(BaseAsset):
+    '''
+    该策略并未直接输出买入或卖出的金额，而是输出一个强弱信号，由我自己决定
+    self.N: 正数代表比过去N个交易日价格高，负数代表比过去N个交易日价格低
+    '''
     def __init__(self, code):
-        """
-        declear all instance members here even though it's not required by syntax
-        """
-        self.code = code # 基金代码
-        self.name = '' # 基金名字
-        self.worth = [] # 历史累计净值
-        self.trading = False # 当前是否正在交易
-        self.N = 0 # 记录策略方法buy_or_sell的输出，正数表示买入的金额，负数表示卖出
-
-    def __str__(self):
-        """convert self to str"""
-        k = '{0}({1})'.format(self.name[:10], self.code)
-        v = str(self.N)
-        return '{0}:{1}'.format(k, v)
-
-    def buy_or_sell(self, worth):
-        """strategy of trading
-        worth是历史上每天的累计净值，worth[-1]是当前的估值。
-        输出N表示买入或卖出（用负数表示）的金额。
-        默认行为类似于定投，永不止盈。
-        用你自己的策略覆盖这个方法。
-        """
-        return 1
-
-    def trade(self):
-        # download
-        retry = 1 # retry only once
-        while retry >= 0:
-            try:
-                self.download()
-                break
-            except:
-                logging.exception('failed to download data for fund {0}'.format(self.code))
-                retry -= 1
-                if retry < 0:
-                    raise
-        
-        # run the strategy
-        self.N = self.buy_or_sell(self.worth)
-        return self.N
+        super().__init__(code)
 
     def download(self):
         """get historical daily prices including today's if available"""
@@ -98,8 +64,10 @@ class Fund:
         #   b) on a trading day but after 15:00, today's value has probably not been updated yet. BUG: This is misleading.
         return None
 
+
 class TestFund(unittest.TestCase):
-    def test_parse_current(self):
+    '''测试：`python -m unittest fund`'''
+    def test_parse_current_rate(self):
         parse_current_rate = Fund.parse_current_rate
         # a normal case
         date = datetime.now().strftime("%Y-%m-%d")
@@ -124,3 +92,103 @@ class TestFund(unittest.TestCase):
         sample = 'jsonpgz({"gszzl":"-0.1","gztime":"%s 14:40"});' % date
         self.assertEqual(-0.1, parse_current_rate(sample))
 
+    def test_buy_or_sell(self):
+        fake_fund = Fund(0)
+        buy_or_sell = fake_fund.buy_or_sell
+        self.assertEqual(0, buy_or_sell([]))
+        self.assertEqual(0, buy_or_sell([1]))
+        self.assertEqual(1, buy_or_sell([1, 2]))
+        self.assertEqual(0, buy_or_sell([1, 2, 2]))
+        self.assertEqual(2, buy_or_sell([1, 2, 3]))
+        self.assertEqual(2, buy_or_sell([4, 1, 2, 3]))
+        self.assertEqual(-1, buy_or_sell([2, 1]))
+        self.assertEqual(0, buy_or_sell([2, 1, 1]))
+        self.assertEqual(-2, buy_or_sell([1, 3, 2, 1]))
+
+    def test_mdd(self):
+        fake_fund = Fund(0)
+        # empty
+        fake_fund.worth = []
+        self.assertEqual((0, 0), fake_fund.cal_mdd())
+        # 1 point
+        fake_fund.worth = [1]
+        self.assertEqual((0, 0), fake_fund.cal_mdd())
+        # 2 points
+        fake_fund.worth = [0.8, 1]
+        self.assertEqual((0, 0), fake_fund.cal_mdd())
+        fake_fund.worth = [1, 0.8]
+        self.assertEqual((0.2, 0.2), fake_fund.cal_mdd())
+        # 3 points
+        fake_fund.worth = [1, 0.8, 0.6]
+        self.assertEqual((0.4, 0.4), fake_fund.cal_mdd())
+        fake_fund.worth = [1, 0.8, 1.2]
+        self.assertEqual((0.2, 0), fake_fund.cal_mdd())
+        fake_fund.worth = [0.8, 1, 1.2]
+        self.assertEqual((0, 0), fake_fund.cal_mdd())
+        fake_fund.worth = [0.8, 1, 0.6]
+        self.assertEqual((0.4, 0.4), fake_fund.cal_mdd())
+        # 4 points
+        fake_fund.worth = [1, 0.6, 1, 0.8]
+        self.assertEqual((0.4, 0.2), fake_fund.cal_mdd())
+        fake_fund.worth = [1, 0.8, 1, 0.6]
+        self.assertEqual((0.4, 0.4), fake_fund.cal_mdd())
+        # 最大回撤的开始和结束没有涉及到最高点或最低点
+        fake_fund.worth = [0.8, 0.7, 1, 0.8, 1.2]
+        self.assertEqual((0.2, 0), fake_fund.cal_mdd())
+
+    def test_str(self):
+        fake_fund = Fund(0)
+        fake_fund.name = '123456789012'
+
+        # scenario #1
+        fake_fund.N = -1
+        fake_fund.worth = [1.2, 0.5, 1, 0.9]
+        fake_fund.mdd, fake_fund.cur = fake_fund.cal_mdd()
+        f = str(fake_fund)
+        print(f)
+        self.assertFalse('🅢' in f)
+        self.assertFalse('🅑' in f)
+        self.assertFalse('🅜' in f)
+        self.assertFalse(',' in f)
+
+        # scenario #2
+        fake_fund.N = -1
+        fake_fund.worth = [1.5, 0.5, 1, 0.7]
+        fake_fund.mdd, fake_fund.cur = fake_fund.cal_mdd()
+        f = str(fake_fund)
+        print(f)
+        self.assertFalse('🅢' in f)
+        self.assertFalse('🅑' in f)
+        self.assertFalse('🅜' in f)
+        self.assertTrue(',' in f)
+        self.assertTrue('30%' in f)
+
+        # scenario #3
+        fake_fund.worth = [1.2, 0.8, 1, 0.6]
+        fake_fund.mdd, fake_fund.cur = fake_fund.cal_mdd()
+        f = str(fake_fund)
+        print(f)
+        self.assertFalse('🅢' in f)
+        self.assertFalse('🅑' in f)
+        self.assertTrue('🅜' in f)
+        self.assertTrue(',' in f)
+
+        # scenario #4
+        fake_fund.N = -500
+        f = str(fake_fund)
+        print(f)
+        self.assertFalse('🅢' in f)
+        self.assertTrue('🅑' in f)
+        self.assertTrue('🅜' in f)
+        self.assertFalse(',' in f)
+
+        # scenario #5
+        fake_fund.N = -2
+        fake_fund.worth = [0.8, 1, 0.6]
+        fake_fund.mdd, fake_fund.cur = fake_fund.cal_mdd()
+        f = str(fake_fund)
+        print(f)
+        self.assertTrue('🅢' in f)
+        self.assertFalse('🅑' in f)
+        self.assertTrue('🅜' in f)
+        self.assertFalse(',' in f)

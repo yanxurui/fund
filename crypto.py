@@ -55,7 +55,7 @@ class Crypto(BaseAsset):
                     # Check if we've reached the beginning
                     # In this case, this batch may overlap with the previous batch
                     if since != None and ohlcv_batch[0][0] > since:
-                        logging.warning(f"We've reached the beginning of available data for {self.symbol}. Stopping pagination.")
+                        logging.debug(f"We've reached the beginning of available data for {self.symbol}. Stopping pagination.")
                         break
 
                     # If we got less than the limit, we've reached the end
@@ -70,7 +70,7 @@ class Crypto(BaseAsset):
                     since_date = datetime.fromtimestamp(since / 1000).strftime('%Y-%m-%d %H:%M:%S') if since else 'N/A'
                     first_candle_date = datetime.fromtimestamp(ohlcv_batch[0][0] / 1000).strftime('%Y-%m-%d')
                     last_candle_date = datetime.fromtimestamp(ohlcv_batch[-1][0] / 1000).strftime('%Y-%m-%d')
-                    logging.info(f"Fetched {len(ohlcv_batch)} candles for {self.symbol} (batch {i}) from {first_candle_date} to {last_candle_date}, next since: {since_date}")
+                    logging.debug(f"Fetched {len(ohlcv_batch)} candles for {self.symbol} (batch {i}) from {first_candle_date} to {last_candle_date}, next since: {since_date}")
                         
                 except Exception as e:
                     logging.exception(f"Error during pagination for {self.symbol}: {e}")

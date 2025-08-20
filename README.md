@@ -106,6 +106,50 @@ def buy_or_sell(N):
 这个策略并不是对所有基金都有效，比如纳斯达克100那种长期以来整体上涨的基金最优的方法就是buy and hold。
 本策略偏爱一些波动大的基金，比如诺安成长混合。
 
+## 架构设计
+
+### 类层次结构
+```
+BaseAsset (base_asset.py)
+├── Fund (fund.py) - 基金资产类，包含实时价格解析和交易策略
+│   └── FundBaseline (baseline_fund.py) - 简化的基金基准类
+├── Stock (stock.py) - 股票资产类
+└── Crypto (crypto.py) - 加密货币资产类
+```
+
+### 监控系统
+```
+Monitor (monitor.py) - 基础监控类
+└── MonitorWithCriteria (monitor_with_criteria.py) - 基于条件的监控系统
+    ├── 阈值过滤 (低位/高位/回撤检测)
+    └── 通知去重机制
+```
+
+### 主要模块
+- **monitor_funds.py** - 基金监控主程序
+- **monitor_stocks.py** - 股票监控主程序  
+- **monitor_cryptos.py** - 加密货币监控主程序
+
+### 测试覆盖
+- **Fund测试** - 交易策略、最大回撤计算、实时价格解析
+- **MonitorWithCriteria测试** - 股票和加密货币监控逻辑
+- **运行所有测试**: `python -m unittest fund.TestFund monitor_with_criteria.TestStockMonitor monitor_with_criteria.TestCryptoMonitor -v`
+
+### 调用顺序
+以monitor_stocks为例
+```
+process (monitor)
+    foreach asset
+        trade (base_asset)
+            download
+    output
+        format
+            filter_sort (monitor_with_criteria)
+                is_interesting
+            create html
+        send_email
+```
+
 
 ## 一些个人的思考
 

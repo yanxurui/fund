@@ -8,35 +8,43 @@ class BaseAsset(ABC):
     def __init__(self, code):
         self.code = code
         self.name = ''
-        self.worth = []
-        self.trading = False
-        self.N = 0
-        self.mdd = None
-        self.cur = None
+        self.worth = [] # 每日的收盘价
+        self.trading = False # 当前是否正在交易
+        self.N = 0 # 记录策略方法buy_or_sell的输出，正数表示买入的金额，负数表示卖出
+        self.mdd = None # 最大回撤
+        self.cur = None # 当前的回撤
 
     def __str__(self):
         k = '{0}({1})'.format(self.name, self.code)
         v = str(self.N)
-        if self.worth and len(self.worth) > 1:
-            if self.N == len(self.worth) - 1:
-                v = 'MAX'
-            elif self.N == -(len(self.worth) - 1):
-                v = 'MIN'
-            if len(self.worth) >= 2 and max(self.worth) == self.worth[-2]:
-                v += '🅢'
+        # return MAX when it reaches the highest in history
+        if self.N == len(self.worth) - 1:
+            v = 'MAX' # 历史最高点
+        elif self.N == -(len(self.worth) - 1):
+            v = 'MIN' # 历史最低点
+        # 创历史新高后下跌则减仓
+        # Circled Letter Symbols from https://altcodeunicode.com/alt-codes-circled-number-letter-symbols-enclosed-alphanumerics/
+        if len(self.worth) >= 2 and max(self.worth) == self.worth[-2]:
+            v += '🅢' # sell
+        # 下跌到过去300个交易日的谷底时加仓
+        # ***这里用了一个hardcoded的经验值***
         if self.N <= -300:
             v += '🅑'
-        if self.cur is not None and self.mdd is not None:
-            now = self.cur > 0 and self.cur == self.mdd
-            if now or self.cur > 0.2:
-                if v[-1].isdigit():
-                    v += ','
-                v += '{:.0f}%'.format(100*self.cur)
-            if now:
-                v += '🅜'
+
+        # 最大回撤
+        now = self.cur > 0 and self.cur == self.mdd
+        # 当前出现历史最大或较大(>20%)的回撤
+        if now or self.cur > 0.2:
+            if v[-1].isdigit():
+                v += ','
+            v += '{:.0f}%'.format(100*self.cur)
+        if now:
+            v += '🅜'
         return '{0}:{1}'.format(k, v)
 
     def buy_or_sell(self, worth):
+        '''该策略并未直接输出买入或卖出的金额，而是输出一个强弱信号，由我自己决定
+    self.N: 正数代表比过去N个交易日价格高，负数代表比过去N个交易日价格低'''
         N = 0
         if not worth:
             return 0

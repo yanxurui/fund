@@ -45,7 +45,7 @@ class Monitor:
         logging.info(f'Starting to process {len(assets)} assets')
         start_time = time.time()
 
-        self._download_asset_data(assets)
+        self._download_asset_data(assets) # call trade -> buy_or_sell
         self._sort_results_by_original_order(assets)
         self._generate_and_send_notification()
 

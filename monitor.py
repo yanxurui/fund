@@ -25,92 +25,122 @@ HTML_TEMPLATE = '''
     </tr>
 </table>'''
 
+
 class Monitor:
+    """Base monitoring class for processing assets and sending notifications"""
+    
     def __init__(self):
         self.success = []
         self.failed = []
         self.subject = '基金小作手【{}】'.format(datetime.now().strftime(u"%Y{0}%m{1}%d{2}").format(*'年月日'))
         self.TEST = os.getenv('TEST')
 
-    def process(self, funds):
-        
+    def process(self, assets):
+        """Main processing pipeline: download data, analyze, and notify"""
         if self.TEST:
             logging.info('TEST mode')
-            funds = funds[:2]
-        start = time.time()
-        logging.info('-'*50)
+            assets[:] = assets[:2]  # Modify the original list in place
+        
+        logging.info('-' * 50)
+        logging.info(f'Starting to process {len(assets)} assets')
+        start_time = time.time()
 
-        # crawling in a parallel manner using gevent
-        def process_async(fund):
+        self._download_asset_data(assets)
+        self._sort_results_by_original_order(assets)
+        self._generate_and_send_notification()
+
+        total_time = time.time() - start_time
+        logging.info(f'Processing completed in {total_time:.2f} seconds')
+
+    def _download_asset_data(self, assets):
+        """Download and process asset data concurrently"""
+        def process_single_asset(asset):
+            """Process a single asset and track timing"""
             start = time.time()
             try:
-                fund.trade()
-                self.success.append(fund)
-            except:
-                logging.exception('failed to get/process fund {0}'.format(fund.code))
-                self.failed.append(fund.code)
+                asset.trade()
+                self.success.append(asset)
+                logging.debug(f'Successfully processed {asset.code}')
+            except Exception as e:
+                logging.exception(f'Failed to process asset {asset.code}: {e}')
+                self.failed.append(asset.code)
             return time.time() - start
 
-        start = time.time()
-        total_time = 0
-        # Use ThreadPoolExecutor for concurrent requests
+        # Execute downloads concurrently
+        concurrent_start = time.time()
+        total_processing_time = 0
+        
         with ThreadPoolExecutor(max_workers=5) as executor:
-            total_time = sum(executor.map(process_async, funds))
-        actual_time = time.time() - start
-        logging.info('total time needed is %.2f, actual time spent is %.2f', total_time, actual_time)
+            total_processing_time = sum(executor.map(process_single_asset, assets))
+        
+        actual_time = time.time() - concurrent_start
+        logging.info(f'Processing time: {total_processing_time:.2f}s total, {actual_time:.2f}s actual')
+        logging.info(f'Success: {len(self.success)}, Failed: {len(self.failed)}')
 
-        # sort self.success by the order in funds
-        # Create a mapping of the index of each object in list1
-        index_map = {obj: index for index, obj in enumerate(funds)}
-        # Sort list2 based on the index in list1
-        self.success.sort(key=lambda obj: index_map[obj])
+    def _sort_results_by_original_order(self, assets):
+        """Sort successful results to match original asset order"""
+        index_map = {asset: index for index, asset in enumerate(assets)}
+        self.success.sort(key=lambda asset: index_map[asset])
 
-        self.output()
-        end = time.time()
-        logging.info('Finishied in {0:.2f} seconds'.format(end - start))
+    def _generate_and_send_notification(self):
+        """Generate formatted notification and send if needed"""
+        html_message = self._create_notification_content()
+        
+        if not html_message:
+            logging.info('No notification needed - no interesting assets found')
+            return
+            
+        self._send_notification(html_message)
 
-    def output(self):
-        html_msg = self.format()
-        if not html_msg:
-            logging.info('Skip sending notification')
-        else:
-            # send notification
-            # avoid notifying on weekends or in test mode
-            if not self.TEST:
-                utils.send_email(
-                    ['yanxurui1993@qq.com'],
-                    self.subject,
-                    html_msg,
-                    mimetype='html')
-            else:
-                logging.info('Skip sending notification in test mode')
-
-    def format(self):
-        results = self.filter_sort()
-        if not results:
+    def _create_notification_content(self):
+        """Create HTML notification content from processed results"""
+        interesting_assets = self.filter_sort()
+        
+        if not interesting_assets:
             return None
 
-        # construct the message to send to subscribers
-        lines = list(map(str, results))
-        html_msg = utils.html_table(list(map(lambda x: x.split(':'), lines)), head=False)
-        error_msg = ''
+        # Format asset information
+        asset_lines = [str(asset) for asset in interesting_assets]
+        html_table = utils.html_table([line.split(':') for line in asset_lines], head=False)
+        
+        # Add error information if any
         if self.failed:
             error_msg = 'Failed: ' + ','.join(self.failed)
-            lines.append(error_msg)
-            html_msg += '\n<p style="color:red">{}</p>'.format(error_msg)
-        text_msg = '\n'.join(lines)
-        html_msg = HTML_TEMPLATE.format(html_msg)
-        logging.info(text_msg)
-        logging.debug(html_msg)
-        return html_msg
+            asset_lines.append(error_msg)
+            html_table += f'\n<p style="color:red">{error_msg}</p>'
+        
+        # Log text version and return HTML
+        text_message = '\n'.join(asset_lines)
+        html_message = HTML_TEMPLATE.format(html_table)
+        
+        logging.info(f'Notification content:\n{text_message}')
+        logging.debug(f'HTML content:\n{html_message}')
+        
+        return html_message
+
+    def _send_notification(self, html_message):
+        """Send email notification unless in test mode"""
+        if self.TEST:
+            logging.info('Skipping email notification in test mode')
+            return
+            
+        utils.send_email(
+            ['yanxurui1993@qq.com'],
+            self.subject,
+            html_message,
+            mimetype='html'
+        )
+        logging.info('Email notification sent successfully')
 
     def filter_sort(self):
-        if any([fund.trading for fund in self.success]):
-            # sort by N in place
-            self.success.sort(key=lambda x: x.N, reverse=True)
-            return self.success
+        """Filter and sort assets based on trading status - override in subclasses"""
+        if any(asset.trading for asset in self.success):
+            # Sort by trading signal strength (N value)
+            sorted_assets = sorted(self.success, key=lambda x: x.N, reverse=True)
+            logging.info(f'Found {len(sorted_assets)} trading assets')
+            return sorted_assets
         else:
-            logging.info('No trading today')
+            logging.info('No assets are currently trading')
             return []
 
 

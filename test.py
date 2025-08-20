@@ -3,8 +3,8 @@ from gevent.pool import Pool
 
 if __name__ == '__main__':
 	def do_something(a):
-		sleep(1)
 		print(a)
+		sleep(1)
 		if a == 2:
 			raise Exception('whats wrong')
 		return a

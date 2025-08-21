@@ -11,7 +11,7 @@ from monitor import Monitor
 class AssetConfig:
     """Configuration for different asset types"""
     def __init__(self, name, snapshot_file, subject_prefix, notification_days, 
-                 low_threshold, high_threshold, drawdown_threshold):
+                 low_threshold, high_threshold, drawdown_threshold, daily_change_threshold=0.15):
         self.name = name
         self.snapshot_file = snapshot_file
         self.subject_prefix = subject_prefix
@@ -19,6 +19,7 @@ class AssetConfig:
         self.low_threshold = low_threshold
         self.high_threshold = high_threshold
         self.drawdown_threshold = drawdown_threshold
+        self.daily_change_threshold = daily_change_threshold  # abs pct change vs previous close to trigger
 
 
 # Asset type configurations
@@ -30,7 +31,8 @@ ASSET_CONFIGS = {
         notification_days=7,
         low_threshold=-500,
         high_threshold=1000,
-        drawdown_threshold=0.2
+        drawdown_threshold=0.2,
+        daily_change_threshold=0.15  # configurable
     ),
     'crypto': AssetConfig(
         name='加密货币',
@@ -39,7 +41,8 @@ ASSET_CONFIGS = {
         notification_days=3,
         low_threshold=-500,
         high_threshold=1000,
-        drawdown_threshold=0.3
+        drawdown_threshold=0.3,
+        daily_change_threshold=0.15  # configurable
     )
 }
 
@@ -102,6 +105,15 @@ class MonitorWithCriteria(Monitor):
             # Check if asset is trading
             if not s.trading:
                 return False
+
+            # 0. large single-day move (>= configured threshold vs previous close)
+            if len(s.worth) >= 2:
+                prev_close = s.worth[-2]
+                if prev_close:  # avoid division by zero
+                    day_change = (s.worth[-1] - prev_close) / prev_close
+                    if abs(day_change) >= self.config.daily_change_threshold:
+                        logging.info(f"{s.code} triggered daily move {day_change:.2%} (threshold {self.config.daily_change_threshold:.0%})")
+                        return True
 
             # Use config thresholds for different conditions
             # 1. lower than the past N days

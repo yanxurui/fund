@@ -7,7 +7,6 @@ from base_asset import BaseAsset
 class Stock(BaseAsset):
     def __init__(self, code):
         super().__init__(code)
-        self.last_price = None
 
     def download(self):
         # fqt
@@ -18,4 +17,3 @@ class Stock(BaseAsset):
         hist = ef.stock.get_quote_history(self.code, fqt=2)
         self.name = hist.iloc[-1]['股票名称']
         self.worth = hist['收盘'].tolist() # The last row contains the current real-time price
-        self.last_price = hist.iloc[-1].to_dict()

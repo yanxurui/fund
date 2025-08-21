@@ -10,7 +10,8 @@ def main_stocks(codes):
     # Create stock-specific configuration
     stock_config = MonitorConfig(
         asset_type='stock',
-        subject_prefix='股票小作手'
+        subject_prefix='股票小作手',
+        snapshot_file="stock_snapshot.json"
     )
     
     MonitorWithCriteria(stock_config).process([Stock(c) for c in codes])

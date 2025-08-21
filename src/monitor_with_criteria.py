@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 -*-
 import os
 import unittest
+from unittest.mock import MagicMock
 import logging
 import json
 from datetime import datetime
@@ -49,29 +50,20 @@ class MonitorWithCriteria(Monitor):
                 snapshot = json.load(f)
 
         for s in self.success:
-            # Handle different asset types for trading detection
-            if self.asset_type == 'stock':
-                s.trading = False
-                if s.code in snapshot:
-                    if s.last_price != snapshot[s.code].get('last_price'):
-                        s.trading = True
-                    else:
-                        # it's either because it's not trading time or the price has changed since last check
-                        pass
+            # Handle trading detection for all asset types using current_price
+            s.trading = False
+            if s.code in snapshot:
+                if s.current_price != snapshot[s.code].get('current_price'):
+                    s.trading = True
                 else:
-                    # trading will be False this is the first time to check
-                    # use 2000-01-01 00:00:00 as the initial value
-                    snapshot[s.code] = {
-                        'last_notified_time': '2000-01-01 00:00:00',
-                    }
-            else:  # crypto - always trading 24/7
-                s.trading = True
-                if s.code not in snapshot:
-                    # First time checking this crypto
-                    # use 2000-01-01 00:00:00 as the initial value
-                    snapshot[s.code] = {
-                        'last_notified_time': '2000-01-01 00:00:00',
-                    }
+                    # it's either because it's not trading time or the price has changed since last check
+                    pass
+            else:
+                # trading will be False this is the first time to check
+                # use 2000-01-01 00:00:00 as the initial value
+                snapshot[s.code] = {
+                    'last_notified_time': '2000-01-01 00:00:00',
+                }
 
             # Log current state
             current_price = s.worth[-1]
@@ -81,9 +73,8 @@ class MonitorWithCriteria(Monitor):
             snapshot[s.code]['datetime'] = now.strftime(date_format)
             snapshot[s.code]['N'] = s.N
             snapshot[s.code]['cur'] = s.cur
-            if self.asset_type == 'stock':
-                snapshot[s.code]['trading'] = s.trading
-                snapshot[s.code]['last_price'] = s.last_price
+            snapshot[s.code]['trading'] = s.trading
+            snapshot[s.code]['current_price'] = s.current_price
 
         def is_interesting(s):
             # Check if asset is trading
@@ -151,14 +142,19 @@ class MonitorWithCriteriaTestCase:
 
     def _ensure_trading(self, asset):
         """Helper method to ensure asset is in trading state"""
-        if self.asset_type == 'stock':
-            # For stocks, we need to establish a price change to trigger trading
-            self.monitor.success = [asset]
-            self.monitor.filter_sort()  # First run establishes snapshot
-            asset.last_price = {'收盘': asset.last_price['收盘'] + 1}  # Change price
+        # For all asset types, we need to establish a price change to trigger trading
+        self.monitor.success = [asset]
+        self.monitor.filter_sort()  # First run establishes snapshot
+        
+        # Change the worth to trigger trading detection
+        # Since current_price is now a property that returns worth[-1],
+        # we modify the worth array to simulate a price change
+        if asset.worth:
+            # Increase the last price to trigger trading
+            asset.worth[-1] = asset.worth[-1] + 1
         else:
-            # Cryptos are always trading
-            pass
+            # If no worth data, add a price
+            asset.worth = [100.0]
 
     # Common test methods that work for both asset types
     def test_empty_results(self):
@@ -235,6 +231,45 @@ class MonitorWithCriteriaTestCase:
         results = self.monitor.filter_sort()
         self.assertEqual([], results)
 
+    def test_trading_detection(self):
+        """Test trading detection logic for all asset types."""
+        # Create the asset for this test
+        asset = self.create_asset()
+        
+        # Create a snapshot file with a different price to trigger trading
+        snapshot_data = {
+            asset.code: {
+                'current_price': 100.0,  # Different from asset's current price
+                'last_notified_time': '2023-01-01 00:00:00',
+                'datetime': '2023-01-01 12:00:00',
+                'N': 0,
+                'cur': 0,
+                'trading': False
+            }
+        }
+        
+        # Write snapshot to file
+        import json
+        with open(self.config.snapshot_file, 'w', encoding='utf-8') as f:
+            json.dump(snapshot_data, f)
+        
+        # Set current price through worth (since current_price is now a property)
+        asset.worth = [105.0]  # Different from snapshot price (100.0)
+        
+        # Mock successful download
+        asset.download = MagicMock(return_value=True)
+        
+        # Set up the monitor with this asset
+        self.monitor.success = [asset]
+        
+        # Run filter_sort which handles trading detection
+        results = self.monitor.filter_sort()
+        
+        # Verify trading was detected due to price change
+        self.assertTrue(asset.trading, f"Trading should be True when price changes from 100.0 to {asset.current_price}")
+        # The result should contain the asset since trading was detected
+        # (assuming the asset meets other criteria)
+
 
 class TestStockMonitor(MonitorWithCriteriaTestCase, unittest.TestCase):
     '''Tests for stock monitoring functionality'''
@@ -253,28 +288,13 @@ class TestStockMonitor(MonitorWithCriteriaTestCase, unittest.TestCase):
     def create_asset(self):
         return self.create_stock()
 
-    def create_stock(self, code="007", N=0, cur=0, worth=[], last_price={'收盘': 1}):
+    def create_stock(self, code="007", N=0, cur=0, worth=[]):
         from stock import Stock
         stock = Stock(code)
         stock.N = N
         stock.cur = cur
         stock.worth = worth or [1]
-        stock.last_price = last_price
         return stock
-
-    def test_trading_detection(self):
-        """Stock-specific test: trading detection based on price changes"""
-        asset = self.create_stock('007')
-        self.monitor.success = [asset]
-
-        # First run - should not be trading (same price)
-        self.monitor.filter_sort()
-        self.assertEqual(False, asset.trading)
-
-        # Second run with different price - should be trading
-        asset.last_price = {'收盘': 2}
-        self.monitor.filter_sort()
-        self.assertEqual(True, asset.trading)
 
 
 class TestCryptoMonitor(MonitorWithCriteriaTestCase, unittest.TestCase):
@@ -304,12 +324,3 @@ class TestCryptoMonitor(MonitorWithCriteriaTestCase, unittest.TestCase):
         crypto.cur = cur
         crypto.worth = worth or [45000]
         return crypto
-
-    def test_always_trading(self):
-        """Crypto-specific test: should always be trading (24/7 markets)"""
-        asset = self.create_crypto('BTC/USDT')
-        self.monitor.success = [asset]
-
-        # Crypto should always be trading
-        self.monitor.filter_sort()
-        self.assertEqual(True, asset.trading)

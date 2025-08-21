@@ -27,6 +27,7 @@ if __name__ == '__main__':
         # 'ADA/USDT',     # Cardano
         'SOL/USDT',     # Solana
         'DOGE/USDT',    # Dogecoin
+        'OKB/USDT',     # OKB
         # 'DOT/USDT',     # Polkadot
         # 'MATIC/USDT',   # Polygon
         # 'SHIB/USDT',    # Shiba Inu

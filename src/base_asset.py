@@ -14,6 +14,11 @@ class BaseAsset(ABC):
         self.mdd = None # 最大回撤
         self.cur = None # 当前的回撤
 
+    @property
+    def current_price(self):
+        """Get the current price (last value in worth)"""
+        return self.worth[-1] if self.worth else None
+
     def __str__(self):
         k = '{0}({1})'.format(self.name, self.code)
         v = str(self.N)

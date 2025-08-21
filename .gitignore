@@ -2,3 +2,4 @@ __pycache__/
 *.py[cod]
 .python-version
 .ipynb_checkpoints/
+.vscode/

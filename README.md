@@ -130,10 +130,20 @@ Monitor (monitor.py) - 基础监控类
 - **monitor_stocks.py** - 股票监控主程序  
 - **monitor_cryptos.py** - 加密货币监控主程序
 
-### 测试覆盖
-- **Fund测试** - 交易策略、最大回撤计算、实时价格解析
-- **MonitorWithCriteria测试** - 股票和加密货币监控逻辑
-- **运行所有测试**: `python -m unittest fund.TestFund monitor_with_criteria.TestStockMonitor monitor_with_criteria.TestCryptoMonitor -v`
+### 运行测试
+```bash
+# 运行所有测试
+python -m unittest discover -p "*.py" -v
+
+# 运行特定模块测试
+python -m unittest fund -v
+python -m unittest monitor_with_criteria -v
+python -m unittest utils -v
+
+# 运行特定测试类
+python -m unittest monitor_with_criteria.TestStockMonitor -v
+python -m unittest monitor_with_criteria.TestCryptoMonitor -v
+```
 
 
 ## 一些个人的思考

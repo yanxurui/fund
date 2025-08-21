@@ -131,39 +131,23 @@ class MonitorWithCriteria(Monitor):
         return results
 
 
-class MonitorWithCriteriaTestCase(unittest.TestCase):
+class MonitorWithCriteriaTestCase:
     '''Base test class for monitor with criteria functionality'''
 
     def setUp(self):
-        # Skip if this base class is being run directly
-        if self.__class__.__name__ == 'MonitorWithCriteriaTestCase':
-            self.skipTest("Abstract base class - should not be run directly")
-
         # To be set by subclasses
         self.asset_type = None
         self.config = None
         self.monitor = None
 
     def tearDown(self):
-        # To be implemented by subclasses for cleanup
-        pass
+        # Clean up snapshot file after test
+        if os.path.exists(self.config.snapshot_file):
+            os.remove(self.config.snapshot_file)
 
-    def create_stock(self, code="007", N=0, cur=0, worth=[], last_price={'收盘': 1}):
-        from stock import Stock
-        stock = Stock(code)
-        stock.N = N
-        stock.cur = cur
-        stock.worth = worth or [1]
-        stock.last_price = last_price
-        return stock
-
-    def create_crypto(self, symbol="BTC/USDT", N=0, cur=0, worth=[]):
-        from crypto import Crypto
-        crypto = Crypto(symbol)
-        crypto.N = N
-        crypto.cur = cur
-        crypto.worth = worth or [45000]
-        return crypto
+    def create_asset(self):
+        """Factory method to create asset - must be implemented by subclasses"""
+        raise NotImplementedError("Subclasses must implement create_asset()")
 
     def _ensure_trading(self, asset):
         """Helper method to ensure asset is in trading state"""
@@ -252,7 +236,7 @@ class MonitorWithCriteriaTestCase(unittest.TestCase):
         self.assertEqual([], results)
 
 
-class TestStockMonitor(MonitorWithCriteriaTestCase):
+class TestStockMonitor(MonitorWithCriteriaTestCase, unittest.TestCase):
     '''Tests for stock monitoring functionality'''
 
     def setUp(self):
@@ -265,16 +249,18 @@ class TestStockMonitor(MonitorWithCriteriaTestCase):
             subject_prefix='股票小作手'
         )
         self.monitor = MonitorWithCriteria(self.config)
-        self.create_asset = self.create_stock
-        
-        # Clean up stock snapshot file
-        if os.path.exists(self.config.snapshot_file):
-            os.remove(self.config.snapshot_file)
 
-    def tearDown(self):
-        # Clean up stock snapshot file after test
-        if os.path.exists(self.config.snapshot_file):
-            os.remove(self.config.snapshot_file)
+    def create_asset(self):
+        return self.create_stock()
+
+    def create_stock(self, code="007", N=0, cur=0, worth=[], last_price={'收盘': 1}):
+        from stock import Stock
+        stock = Stock(code)
+        stock.N = N
+        stock.cur = cur
+        stock.worth = worth or [1]
+        stock.last_price = last_price
+        return stock
 
     def test_trading_detection(self):
         """Stock-specific test: trading detection based on price changes"""
@@ -291,7 +277,7 @@ class TestStockMonitor(MonitorWithCriteriaTestCase):
         self.assertEqual(True, asset.trading)
 
 
-class TestCryptoMonitor(MonitorWithCriteriaTestCase):
+class TestCryptoMonitor(MonitorWithCriteriaTestCase, unittest.TestCase):
     '''Tests for crypto monitoring functionality'''
 
     def setUp(self):
@@ -307,16 +293,17 @@ class TestCryptoMonitor(MonitorWithCriteriaTestCase):
             drawdown_threshold=0.3
         )
         self.monitor = MonitorWithCriteria(self.config)
-        self.create_asset = self.create_crypto
-        
-        # Clean up crypto snapshot file
-        if os.path.exists(self.config.snapshot_file):
-            os.remove(self.config.snapshot_file)
 
-    def tearDown(self):
-        # Clean up crypto snapshot file after test
-        if os.path.exists(self.config.snapshot_file):
-            os.remove(self.config.snapshot_file)
+    def create_asset(self):
+        return self.create_crypto()
+
+    def create_crypto(self, symbol="BTC/USDT", N=0, cur=0, worth=[]):
+        from crypto import Crypto
+        crypto = Crypto(symbol)
+        crypto.N = N
+        crypto.cur = cur
+        crypto.worth = worth or [45000]
+        return crypto
 
     def test_always_trading(self):
         """Crypto-specific test: should always be trading (24/7 markets)"""

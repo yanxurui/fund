@@ -12,14 +12,25 @@ def main_cryptos(symbols, exchange_name='binance'):
         notification_days=3,
         drawdown_threshold=0.3
     )
-    cryptos = [Crypto(symbol, exchange_name) for symbol in symbols]
+    
+    # Handle case where symbols is a list of tuples (symbol, exchange)
+    # or a simple list of symbols with default exchange
+    cryptos = []
+    for item in symbols:
+        if isinstance(item, tuple):
+            symbol, exchange = item
+            cryptos.append(Crypto(symbol, exchange))
+        else:
+            symbol = item
+            cryptos.append(Crypto(symbol, exchange_name))
+    
     MonitorWithCriteria(config).process(cryptos)
 
 
 if __name__ == '__main__':
-    # Crypto symbols from original monitor_cryptos.py
+    # Crypto symbols - can be simple strings or (symbol, exchange) tuples
     crypto_symbols = [
-        # Major cryptocurrencies
+        # Major cryptocurrencies on Binance
         'BTC/USDT',     # Bitcoin
         'ETH/USDT',     # Ethereum
         # 'BNB/USDT',     # Binance Coin
@@ -27,7 +38,11 @@ if __name__ == '__main__':
         # 'ADA/USDT',     # Cardano
         'SOL/USDT',     # Solana
         'DOGE/USDT',    # Dogecoin
-        'OKB/USDT',     # OKB
+        
+        # OKB from OKX exchange (native token)
+        ('OKB/USDT', 'okx'),     # OKB on OKX exchange
+        
+        # Other symbols
         # 'DOT/USDT',     # Polkadot
         # 'MATIC/USDT',   # Polygon
         # 'SHIB/USDT',    # Shiba Inu
@@ -51,4 +66,5 @@ if __name__ == '__main__':
     ]
 
     print("Monitoring cryptos...")
-    main_cryptos(crypto_symbols, 'binance')
+    # Use 'coinbase' or 'kraken' instead of 'binance' due to geographic restrictions
+    main_cryptos(crypto_symbols, 'coinbase')  # Default exchange for simple symbols

@@ -28,4 +28,4 @@ jobs:
     
     - name: Run all tests with unittest
       run: |
-        python -m unittest discover -p "*.py" -v
+        cd src && python -m unittest discover -p "*.py" -v

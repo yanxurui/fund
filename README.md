@@ -11,7 +11,7 @@
 ## 功能介绍
 本项目包含以下两个功能：
 
-1. **[monitor_funds.py](monitor_funds.py)**: 它可以监控你指定的一揽子的基金，根据你自己设计的策略计算买入卖出的数量或某种自定义的信号，每天发送通知。目前我的关注列表涵盖了大部分热门板块的行业基金、少数长牛基金以及一些关键的指数基金，每天14:45通过email推送，联系我免费订阅。
+1. **[monitor_funds.py](src/monitor_funds.py)**: 它可以监控你指定的一揽子的基金，根据你自己设计的策略计算买入卖出的数量或某种自定义的信号，每天发送通知。目前我的关注列表涵盖了大部分热门板块的行业基金、少数长牛基金以及一些关键的指数基金，每天14:45通过email推送，联系我免费订阅。
 <p align="center">
 <img src="demo_email.PNG" alt="邮件" width="400">
 </p>
@@ -110,39 +110,39 @@ def buy_or_sell(N):
 
 ### 类层次结构
 ```
-BaseAsset (base_asset.py)
-├── Fund (fund.py) - 基金资产类，包含实时价格解析和交易策略
-│   └── FundBaseline (baseline_fund.py) - 简化的基金基准类
-├── Stock (stock.py) - 股票资产类
-└── Crypto (crypto.py) - 加密货币资产类
+BaseAsset (src/base_asset.py)
+├── Fund (src/fund.py) - 基金资产类，包含实时价格解析和交易策略
+│   └── FundBaseline (src/fund_baseline.py) - 简化的基金基准类
+├── Stock (src/stock.py) - 股票资产类
+└── Crypto (src/crypto.py) - 加密货币资产类
 ```
 
 ### 监控系统
 ```
-Monitor (monitor.py) - 基础监控类
-└── MonitorWithCriteria (monitor_with_criteria.py) - 基于条件的监控系统
+Monitor (src/monitor.py) - 基础监控类
+└── MonitorWithCriteria (src/monitor_with_criteria.py) - 基于条件的监控系统
     ├── 阈值过滤 (低位/高位/回撤检测)
     └── 通知去重机制
 ```
 
 ### 主要模块
-- **monitor_funds.py** - 基金监控主程序
-- **monitor_stocks.py** - 股票监控主程序  
-- **monitor_cryptos.py** - 加密货币监控主程序
+- **src/monitor_funds.py** - 基金监控主程序
+- **src/monitor_stocks.py** - 股票监控主程序  
+- **src/monitor_cryptos.py** - 加密货币监控主程序
 
 ### 运行测试
 ```bash
 # 运行所有测试
-python -m unittest discover -p "*.py" -v
+cd src && python -m unittest discover -p "*.py" -v
 
 # 运行特定模块测试
-python -m unittest fund -v
-python -m unittest monitor_with_criteria -v
-python -m unittest utils -v
+cd src && python -m unittest fund -v
+cd src && python -m unittest monitor_with_criteria -v
+cd src && python -m unittest utils -v
 
 # 运行特定测试类
-python -m unittest monitor_with_criteria.TestStockMonitor -v
-python -m unittest monitor_with_criteria.TestCryptoMonitor -v
+cd src && python -m unittest monitor_with_criteria.TestStockMonitor -v
+cd src && python -m unittest monitor_with_criteria.TestCryptoMonitor -v
 ```
 
 

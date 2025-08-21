@@ -1,7 +1,6 @@
 # -*- coding: UTF-8 -*-
 import os
 import unittest
-from unittest.mock import MagicMock
 import logging
 import json
 from datetime import datetime
@@ -255,9 +254,6 @@ class MonitorWithCriteriaTestCase:
         
         # Set current price through worth (since current_price is now a property)
         asset.worth = [105.0]  # Different from snapshot price (100.0)
-        
-        # Mock successful download
-        asset.download = MagicMock(return_value=True)
         
         # Set up the monitor with this asset
         self.monitor.success = [asset]

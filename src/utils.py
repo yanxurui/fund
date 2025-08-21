@@ -57,8 +57,18 @@ class TestUtils(unittest.TestCase):
             ['a', 'b', 'c'],
             [1, 2, 3],
         ]
-        print(html_table(lols, head=False))
-        print(html_table(lols))
+        # Test that html_table function works without errors
+        result_without_head = html_table(lols, head=False)
+        result_with_head = html_table(lols)
+
+        # print(result_without_head)
+        # print(result_with_head)
+        
+        # Basic assertions to verify the function works
+        self.assertIn('<table', result_without_head)
+        self.assertIn('<table', result_with_head)
+        self.assertIn('<th>', result_with_head)  # Should have headers
+        self.assertNotIn('<th>', result_without_head)  # Should not have headers
 
     @unittest.skipIf(int(os.getenv('TEST_SEND_EMAIL', 0)) < 1, 'skip by default')
     def test_send_email(self):

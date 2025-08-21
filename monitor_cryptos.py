@@ -1,12 +1,19 @@
 # -*- coding: UTF-8 -*-
-from monitor_with_criteria import MonitorWithCriteria
+from monitor_with_criteria import MonitorWithCriteria, MonitorConfig
 from crypto import Crypto
 
 
 def main_cryptos(symbols, exchange_name='binance'):
     """Monitor crypto assets"""
+    config = MonitorConfig(
+        asset_type='crypto',
+        subject_prefix='加密货币小作手',
+        snapshot_file='crypto_snapshot.json',
+        notification_days=3,
+        drawdown_threshold=0.3
+    )
     cryptos = [Crypto(symbol, exchange_name) for symbol in symbols]
-    MonitorWithCriteria('crypto').process(cryptos)
+    MonitorWithCriteria(config).process(cryptos)
 
 
 if __name__ == '__main__':

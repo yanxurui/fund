@@ -8,11 +8,20 @@ from datetime import datetime
 from monitor import Monitor
 
 
-class AssetConfig:
-    """Configuration for different asset types"""
-    def __init__(self, name, snapshot_file, subject_prefix, notification_days, 
-                 low_threshold, high_threshold, drawdown_threshold, daily_change_threshold=0.15):
-        self.name = name
+class MonitorConfig:
+    """Configuration for monitoring different asset types"""
+    def __init__(
+            self,
+            asset_type,
+            subject_prefix,
+            snapshot_file="snapshot.json",
+            notification_days=7,
+            low_threshold=-500,
+            high_threshold=1000,
+            drawdown_threshold=0.2,
+            daily_change_threshold=0.15
+    ):
+        self.asset_type = asset_type  # e.g. 'stock' or 'crypto'
         self.snapshot_file = snapshot_file
         self.subject_prefix = subject_prefix
         self.notification_days = notification_days
@@ -22,36 +31,11 @@ class AssetConfig:
         self.daily_change_threshold = daily_change_threshold  # abs pct change vs previous close to trigger
 
 
-# Asset type configurations
-ASSET_CONFIGS = {
-    'stock': AssetConfig(
-        name='股票',
-        snapshot_file='snapshot.json',
-        subject_prefix='股票小作手',
-        notification_days=7,
-        low_threshold=-500,
-        high_threshold=1000,
-        drawdown_threshold=0.2,
-        daily_change_threshold=0.15  # configurable
-    ),
-    'crypto': AssetConfig(
-        name='加密货币',
-        snapshot_file='crypto_snapshot.json',
-        subject_prefix='加密货币小作手',
-        notification_days=3,
-        low_threshold=-500,
-        high_threshold=1000,
-        drawdown_threshold=0.3,
-        daily_change_threshold=0.15  # configurable
-    )
-}
-
-
 class MonitorWithCriteria(Monitor):
-    def __init__(self, asset_type):
+    def __init__(self, config):
         super().__init__()
-        self.asset_type = asset_type
-        self.config = ASSET_CONFIGS[asset_type]
+        self.config = config
+        self.asset_type = config.asset_type
         self.subject = f'{self.config.subject_prefix}【{datetime.now().strftime(u"%Y{0}%m{1}%d{2}").format(*"年月日")}】'
 
     def filter_sort(self):
@@ -155,21 +139,14 @@ class MonitorWithCriteriaTestCase(unittest.TestCase):
         if self.__class__.__name__ == 'MonitorWithCriteriaTestCase':
             self.skipTest("Abstract base class - should not be run directly")
 
-        # Clean up any existing snapshot files
-        for config in ASSET_CONFIGS.values():
-            if os.path.exists(config.snapshot_file):
-                os.remove(config.snapshot_file)
-
         # To be set by subclasses
         self.asset_type = None
         self.config = None
         self.monitor = None
 
     def tearDown(self):
-        # Clean up snapshot files after tests
-        for config in ASSET_CONFIGS.values():
-            if os.path.exists(config.snapshot_file):
-                os.remove(config.snapshot_file)
+        # To be implemented by subclasses for cleanup
+        pass
 
     def create_stock(self, code="007", N=0, cur=0, worth=[], last_price={'收盘': 1}):
         from stock import Stock
@@ -280,11 +257,24 @@ class TestStockMonitor(MonitorWithCriteriaTestCase):
 
     def setUp(self):
         super().setUp()
+        
         asset_type = 'stock'
         self.asset_type = asset_type
-        self.config = ASSET_CONFIGS[asset_type]
-        self.monitor = MonitorWithCriteria(asset_type)
+        self.config = MonitorConfig(
+            asset_type='stock',
+            subject_prefix='股票小作手'
+        )
+        self.monitor = MonitorWithCriteria(self.config)
         self.create_asset = self.create_stock
+        
+        # Clean up stock snapshot file
+        if os.path.exists(self.config.snapshot_file):
+            os.remove(self.config.snapshot_file)
+
+    def tearDown(self):
+        # Clean up stock snapshot file after test
+        if os.path.exists(self.config.snapshot_file):
+            os.remove(self.config.snapshot_file)
 
     def test_trading_detection(self):
         """Stock-specific test: trading detection based on price changes"""
@@ -306,11 +296,27 @@ class TestCryptoMonitor(MonitorWithCriteriaTestCase):
 
     def setUp(self):
         super().setUp()
+        
         asset_type = 'crypto'
         self.asset_type = asset_type
-        self.config = ASSET_CONFIGS[asset_type]
-        self.monitor = MonitorWithCriteria(asset_type)
+        self.config = MonitorConfig(
+            asset_type='crypto',
+            subject_prefix='加密货币小作手',
+            snapshot_file='crypto_snapshot.json',
+            notification_days=3,
+            drawdown_threshold=0.3
+        )
+        self.monitor = MonitorWithCriteria(self.config)
         self.create_asset = self.create_crypto
+        
+        # Clean up crypto snapshot file
+        if os.path.exists(self.config.snapshot_file):
+            os.remove(self.config.snapshot_file)
+
+    def tearDown(self):
+        # Clean up crypto snapshot file after test
+        if os.path.exists(self.config.snapshot_file):
+            os.remove(self.config.snapshot_file)
 
     def test_always_trading(self):
         """Crypto-specific test: should always be trading (24/7 markets)"""

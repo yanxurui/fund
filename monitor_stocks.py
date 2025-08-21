@@ -1,13 +1,19 @@
 # -*- coding: UTF-8 -*-
 import efinance as ef
 
-from monitor_with_criteria import MonitorWithCriteria
+from monitor_with_criteria import MonitorWithCriteria, MonitorConfig
 from stock import Stock
 
 
 def main_stocks(codes):
     """Monitor stock assets"""
-    MonitorWithCriteria('stock').process([Stock(c) for c in codes])
+    # Create stock-specific configuration
+    stock_config = MonitorConfig(
+        asset_type='stock',
+        subject_prefix='股票小作手'
+    )
+    
+    MonitorWithCriteria(stock_config).process([Stock(c) for c in codes])
 
     # Need to close the session manually to avoid the error below:
     # sys:1: ResourceWarning: unclosed <socket object, fd=3, family=2, type=1, proto=6>

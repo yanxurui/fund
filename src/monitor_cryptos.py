@@ -3,7 +3,7 @@ from monitor_with_criteria import MonitorWithCriteria, MonitorConfig
 from crypto import Crypto
 
 
-def main_cryptos(symbols, exchange_name='binance'):
+def main_cryptos(symbols):
     """Monitor crypto assets"""
     config = MonitorConfig(
         asset_type='crypto',
@@ -22,7 +22,7 @@ def main_cryptos(symbols, exchange_name='binance'):
             cryptos.append(Crypto(symbol, exchange))
         else:
             symbol = item
-            cryptos.append(Crypto(symbol, exchange_name))
+            cryptos.append(Crypto(symbol))
     
     MonitorWithCriteria(config).process(cryptos)
 
@@ -30,18 +30,18 @@ def main_cryptos(symbols, exchange_name='binance'):
 if __name__ == '__main__':
     # Crypto symbols - can be simple strings or (symbol, exchange) tuples
     crypto_symbols = [
-        # Major cryptocurrencies on Binance
+        # Major cryptocurrencies
         'BTC/USDT',     # Bitcoin
         'ETH/USDT',     # Ethereum
-        # 'BNB/USDT',     # Binance Coin
-        # 'XRP/USDT',     # Ripple
-        # 'ADA/USDT',     # Cardano
+        ('BNB/USDT', 'binance'),     # Binance Coin (using OKX due to geo-restrictions)
+        'XRP/USDT',     # Ripple
+        'ADA/USDT',     # Cardano
         'SOL/USDT',     # Solana
         'DOGE/USDT',    # Dogecoin
         
         # OKB from OKX exchange (native token)
         ('OKB/USDT', 'okx'),     # OKB on OKX exchange
-        
+
         # Other symbols
         # 'DOT/USDT',     # Polkadot
         # 'MATIC/USDT',   # Polygon
@@ -50,7 +50,7 @@ if __name__ == '__main__':
         # 'ATOM/USDT',    # Cosmos
         'LINK/USDT',    # Chainlink
         # 'UNI/USDT',     # Uniswap
-        # 'LTC/USDT',     # Litecoin
+        'LTC/USDT',     # Litecoin
         # # DeFi tokens
         # 'AAVE/USDT',    # Aave
         # 'COMP/USDT',    # Compound
@@ -66,5 +66,4 @@ if __name__ == '__main__':
     ]
 
     print("Monitoring cryptos...")
-    # Use 'coinbase' or 'kraken' instead of 'binance' due to geographic restrictions
-    main_cryptos(crypto_symbols, 'coinbase')  # Default exchange for simple symbols
+    main_cryptos(crypto_symbols)  # Default exchange for simple symbols

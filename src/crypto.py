@@ -2,6 +2,7 @@
 import logging
 from datetime import datetime
 import pandas as pd
+import time
 
 import ccxt
 
@@ -23,7 +24,7 @@ class Crypto(BaseAsset):
             # 'apiKey': '',  # Add your API key if needed
             # 'secret': '',  # Add your secret if needed
             'timeout': 30000,
-            # 'enableRateLimit': True,
+            'enableRateLimit': True,  # Enable built-in rate limiting
         })
 
         try:
@@ -58,19 +59,20 @@ class Crypto(BaseAsset):
                         logging.debug(f"We've reached the beginning of available data for {self.symbol}. Stopping pagination.")
                         break
 
-                    # If we got less than the limit, we've reached the end
-                    if len(ohlcv_batch) < limit:
-                        logging.info(f"Reached the end of available data for {self.symbol} on batch {i}. Stopping pagination.")
-                        break
-
                     # Set since to get older data
-                    since = ohlcv_batch[0][0] - (24 * 60 * 60 * 1000 * limit)
+                    # Use the actual number of candles returned instead of the requested limit
+                    actual_candles = len(ohlcv_batch)
+                    since = ohlcv_batch[0][0] - (24 * 60 * 60 * 1000 * actual_candles)
 
                     # Convert since timestamp to human readable format for logging
                     since_date = datetime.fromtimestamp(since / 1000).strftime('%Y-%m-%d %H:%M:%S') if since else 'N/A'
                     first_candle_date = datetime.fromtimestamp(ohlcv_batch[0][0] / 1000).strftime('%Y-%m-%d')
                     last_candle_date = datetime.fromtimestamp(ohlcv_batch[-1][0] / 1000).strftime('%Y-%m-%d')
                     logging.debug(f"Fetched {len(ohlcv_batch)} candles for {self.symbol} (batch {i}) from {first_candle_date} to {last_candle_date}, next since: {since_date}")
+
+                    # Add a small delay to avoid rate limiting (especially for OKX)
+                    # if i > 1:  # Skip delay for first request
+                    #     time.sleep(0.5)  # 500ms delay between requests
 
                 except Exception as e:
                     logging.exception(f"Error during pagination for {self.symbol}: {e}")

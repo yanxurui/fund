@@ -58,7 +58,7 @@ class MonitorWithCriteria(Monitor):
                     # it's either because it's not trading time or the price has changed since last check
                     pass
             else:
-                # trading will be False this is the first time to check
+                # trading will be False if this is the first time to check
                 # use 2000-01-01 00:00:00 as the initial value
                 snapshot[s.code] = {
                     'last_notified_time': '2000-01-01 00:00:00',

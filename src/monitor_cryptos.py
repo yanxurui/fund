@@ -9,7 +9,6 @@ def main_cryptos(symbols):
         asset_type='crypto',
         subject_prefix='加密货币小作手',
         snapshot_file='crypto_snapshot.json',
-        notification_days=3,
         drawdown_threshold=0.3
     )
     

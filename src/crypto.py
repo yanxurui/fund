@@ -15,7 +15,7 @@ class Crypto(BaseAsset):
         super().__init__(symbol)
         self.symbol = symbol
         self.exchange_name = exchange_name
-        self.name = self.symbol.replace('/', '_')  # e.g., BTC/USDT -> BTC_USDT
+        self.name = self.symbol.split('/')[0]  # e.g., BTC/USDT -> BTC
 
     def download(self):
         # Initialize the exchange

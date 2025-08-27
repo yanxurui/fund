@@ -15,11 +15,11 @@ class MonitorConfig:
             asset_type,
             subject_prefix,
             snapshot_file="snapshot.json",
-            notification_days=7,
+            notification_days=1,
             low_threshold=-500,
             high_threshold=1000,
             drawdown_threshold=0.2,
-            daily_change_threshold=0.15
+            daily_change_threshold=0.1
     ):
         self.asset_type = asset_type  # e.g. 'stock' or 'crypto'
         self.snapshot_file = snapshot_file

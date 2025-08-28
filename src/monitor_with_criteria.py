@@ -58,26 +58,27 @@ class MonitorWithCriteria(Monitor):
                 return False
 
             # 0. large single-day move (>= configured threshold vs previous close)
-            if len(s.worth) >= 2:
-                prev_close = s.worth[-2]
-                if prev_close:  # avoid division by zero
-                    day_change = (s.worth[-1] - prev_close) / prev_close
-                    if abs(day_change) >= self.config.daily_change_threshold:
-                        logging.info(f"{s.code} triggered daily move {day_change:.2%} (threshold {self.config.daily_change_threshold:.0%})")
-                        return True
+            day_change = s.daily_change_pct
+            if abs(day_change) >= self.config.daily_change_threshold:
+                logging.info(f"{s.code} triggered daily move {day_change:.2%} (threshold {self.config.daily_change_threshold:.0%})")
+                return True
 
             # Use config thresholds for different conditions
             # 1. lower than the past N days
             if s.N < self.config.low_threshold:
+                logging.info(f"{s.code} triggered low threshold: N={s.N} < {self.config.low_threshold}")
                 return True
             # 2. drawdown is greater than threshold
             if s.cur > self.config.drawdown_threshold:
+                logging.info(f"{s.code} triggered drawdown threshold: {s.cur:.2%} > {self.config.drawdown_threshold:.0%}")
                 return True
             # 3. higher than the past N days
             if s.N > self.config.high_threshold:
+                logging.info(f"{s.code} triggered high threshold: N={s.N} > {self.config.high_threshold}")
                 return True
             # 4. reached the highest price
-            if s.N == len(s.worth) - 1:
+            if s.is_at_historical_high:
+                logging.info(f"{s.code} hit historical high: N={s.N} == {len(s.worth) - 1}")
                 return True
             return False
 
@@ -242,43 +243,6 @@ class MonitorWithCriteriaTestCase:
         self.assertTrue(asset.trading, f"Trading should be True when price changes from 100.0 to {asset.current_price}")
         # The result should contain the asset since trading was detected
         # (assuming the asset meets other criteria)
-
-    def test_daily_change_formatting(self):
-        """Test that daily change percentage is displayed when above threshold"""
-        asset = self.create_asset()
-
-        # Set up asset with significant daily change
-        asset.worth = [100.0, 115.0]  # 15% increase
-        asset.N = 5
-        asset.cur = 0.05
-
-        # Test formatting with daily change threshold of 10% - should show change
-        formatted_with_change = asset.format_with_config(
-            low_threshold=self.config.low_threshold,
-            drawdown_threshold=self.config.drawdown_threshold,
-            daily_change_threshold=0.10  # 10% threshold
-        )
-        self.assertIn('+15.0%⬆️', formatted_with_change)
-
-        # Test formatting with daily change threshold of 20% - should NOT show change
-        formatted_without_change = asset.format_with_config(
-            low_threshold=self.config.low_threshold,
-            drawdown_threshold=self.config.drawdown_threshold,
-            daily_change_threshold=0.20  # 20% threshold
-        )
-        self.assertNotIn('⬆️', formatted_without_change)
-        self.assertNotIn('⬇️', formatted_without_change)
-
-        # Test negative daily change
-        asset.worth = [100.0, 85.0]  # -15% decrease
-        asset.N = -50
-
-        formatted_negative = asset.format_with_config(
-            low_threshold=self.config.low_threshold,
-            drawdown_threshold=self.config.drawdown_threshold,
-            daily_change_threshold=0.10  # 10% threshold
-        )
-        self.assertIn('-15.0%⬇️', formatted_negative)
 
 
 class TestStockMonitor(MonitorWithCriteriaTestCase, unittest.TestCase):

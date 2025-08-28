@@ -11,14 +11,14 @@ def main(codes):
     '''
     # Create a config for fund monitoring
     config = MonitorConfig(
-        asset_type='fund',  # Used for identification
-        subject_prefix='基金小作手',  # Used in email subject
-        snapshot_file='fund_snapshot.json',  # Not used - funds don't use snapshot-based trading detection
-        notification_days=1,  # Not used - funds don't use notification deduplication
-        low_threshold=-300,  # Used in formatting - traditional fund threshold
-        high_threshold=300,  # Not used - funds use basic filter_sort() 
-        drawdown_threshold=0.2,  # Used in formatting - 20% drawdown threshold
-        daily_change_threshold=0.1  # Used in formatting - 5% daily change display threshold
+        asset_type='fund',  # Not used
+        subject_prefix='基金小作手',
+        snapshot_file='fund_snapshot.json',  # Not used
+        notification_days=1,  # Not used
+        low_threshold=-300,
+        high_threshold=300,  # Not used
+        drawdown_threshold=0.2,
+        daily_change_threshold=0.1 
     )
 
     Monitor(config).process([Fund(c) for c in codes])

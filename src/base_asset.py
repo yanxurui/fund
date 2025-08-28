@@ -8,11 +8,11 @@ class BaseAsset(ABC):
     def __init__(self, code):
         self.code = code
         self.name = ''
-        self.worth = [] # 每日的收盘价
-        self.trading = False # 当前是否正在交易
-        self.N = 0 # 记录策略方法buy_or_sell的输出，正数表示买入的金额，负数表示卖出
-        self.mdd = None # 最大回撤
-        self.cur = None # 当前的回撤
+        self.worth = [] # Daily closing prices
+        self.trading = False # Whether currently trading
+        self.N = 0 # Records the output of the buy_or_sell strategy method, positive means buy amount, negative means sell
+        self.mdd = None # Maximum drawdown
+        self.cur = None # Current drawdown
 
     @property
     def current_price(self):
@@ -30,22 +30,22 @@ class BaseAsset(ABC):
 
         # return MAX when it reaches the highest in history
         if self.N == len(self.worth) - 1:
-            v = 'MAX' # 历史最高点
+            v = 'MAX' # Historical high point
         elif self.N == -(len(self.worth) - 1):
-            v = 'MIN' # 历史最低点
+            v = 'MIN' # Historical low point
 
         # 创历史新高后下跌则减仓
         # Circled Letter Symbols from https://altcodeunicode.com/alt-codes-circled-number-letter-symbols-enclosed-alphanumerics/
         if len(self.worth) >= 2 and max(self.worth) == self.worth[-2]:
             v += '🅢' # sell
 
-        # 下跌到过去N个交易日的谷底时加仓 (using configurable threshold)
+        # Add position when it falls to the valley bottom of the past N trading days (using configurable threshold)
         if self.N <= low_threshold:
             v += '🅑'
 
-        # 最大回撤
+        # Maximum drawdown
         now = self.cur > 0 and self.cur == self.mdd
-        # 当前出现历史最大或较大回撤 (using configurable threshold)
+        # Current occurrence of historical maximum or significant drawdown (using configurable threshold)
         if now or self.cur > drawdown_threshold:
             if v[-1].isdigit():
                 v += ','
@@ -68,8 +68,8 @@ class BaseAsset(ABC):
         return '{0}:{1}'.format(k, v)
 
     def buy_or_sell(self, worth):
-        '''该策略并未直接输出买入或卖出的金额，而是输出一个强弱信号，由我自己决定
-    self.N: 正数代表比过去N个交易日价格高，负数代表比过去N个交易日价格低'''
+        '''This strategy does not directly output the amount to buy or sell, but outputs a strength signal for me to decide
+    self.N: positive number represents price higher than past N trading days, negative number represents price lower than past N trading days'''
         N = 0
         if not worth:
             return 0
@@ -106,7 +106,7 @@ class BaseAsset(ABC):
                     start = start_tmp
                     end = i - 1
                 start_tmp = i
-        logging.debug('最大回撤：{:.1f}%'.format(100*max_drawdown))
+        logging.debug('Maximum drawdown: {:.1f}%'.format(100*max_drawdown))
         return round(max_drawdown, 4), round(current_drawdown, 4)
 
     def trade(self):

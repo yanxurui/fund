@@ -11,8 +11,8 @@ from base_asset import BaseAsset
 
 class Fund(BaseAsset):
     '''
-    该策略并未直接输出买入或卖出的金额，而是输出一个强弱信号，由我自己决定
-    self.N: 正数代表比过去N个交易日价格高，负数代表比过去N个交易日价格低
+    This strategy does not directly output the amount to buy or sell, but outputs a strength signal for me to decide
+    self.N: positive number represents price higher than past N trading days, negative number represents price lower than past N trading days
     '''
     def __init__(self, code):
         super().__init__(code)
@@ -66,7 +66,7 @@ class Fund(BaseAsset):
 
 
 class TestFund(unittest.TestCase):
-    '''测试：`python -m unittest fund`'''
+    '''Test: `python -m unittest fund`'''
     def test_parse_current_rate(self):
         parse_current_rate = Fund.parse_current_rate
         # a normal case

@@ -11,7 +11,7 @@ def main_cryptos(symbols):
         snapshot_file='crypto_snapshot.json',
         drawdown_threshold=0.3
     )
-    
+
     # Handle case where symbols is a list of tuples (symbol, exchange)
     # or a simple list of symbols with default exchange
     cryptos = []
@@ -22,7 +22,7 @@ def main_cryptos(symbols):
         else:
             symbol = item
             cryptos.append(Crypto(symbol))
-    
+
     MonitorWithCriteria(config).process(cryptos)
 
 
@@ -37,7 +37,7 @@ if __name__ == '__main__':
         'ADA/USDT',     # Cardano
         'SOL/USDT',     # Solana
         'DOGE/USDT',    # Dogecoin
-        
+
         # OKB from OKX exchange (native token)
         ('OKB/USDT', 'okx'),     # OKB on OKX exchange
 

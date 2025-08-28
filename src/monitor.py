@@ -29,10 +29,12 @@ HTML_TEMPLATE = '''
 class Monitor:
     """Base monitoring class for processing assets and sending notifications"""
 
-    def __init__(self):
+    def __init__(self, config=None):
         self.success = []
         self.failed = []
-        self.subject = '基金小作手【{}】'.format(datetime.now().strftime(u"%Y{0}%m{1}%d{2}").format(*'年月日'))
+        self.config = config  # Optional config for configurable formatting
+        self.subject = f'{self.config.subject_prefix}【{datetime.now().strftime(u"%Y{0}%m{1}%d{2}").format(*"年月日")}】'
+
         self.TEST = os.getenv('TEST')
 
     def process(self, assets):
@@ -99,8 +101,14 @@ class Monitor:
         if not interesting_assets:
             return None
 
-        # Format asset information
-        asset_lines = [str(asset) for asset in interesting_assets]
+        # Format asset information - use configurable formatting if config is available
+        # Use configurable formatting with thresholds from config
+        asset_lines = [asset.format_with_config(
+            low_threshold=self.config.low_threshold,
+            drawdown_threshold=self.config.drawdown_threshold,
+            daily_change_threshold=self.config.daily_change_threshold
+        ) for asset in interesting_assets]
+
         html_table = utils.html_table([line.split(':') for line in asset_lines], head=False)
 
         # Add error information if any

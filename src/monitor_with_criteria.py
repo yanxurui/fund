@@ -6,37 +6,14 @@ import json
 from datetime import datetime
 
 from monitor import Monitor
-
-
-class MonitorConfig:
-    """Configuration for monitoring different asset types"""
-    def __init__(
-            self,
-            asset_type,
-            subject_prefix,
-            snapshot_file="snapshot.json",
-            notification_days=1,
-            low_threshold=-500,
-            high_threshold=1000,
-            drawdown_threshold=0.2,
-            daily_change_threshold=0.1
-    ):
-        self.asset_type = asset_type  # e.g. 'stock' or 'crypto'
-        self.snapshot_file = snapshot_file
-        self.subject_prefix = subject_prefix
-        self.notification_days = notification_days
-        self.low_threshold = low_threshold
-        self.high_threshold = high_threshold
-        self.drawdown_threshold = drawdown_threshold
-        self.daily_change_threshold = daily_change_threshold  # abs pct change vs previous close to trigger
+from monitor_config import MonitorConfig
 
 
 class MonitorWithCriteria(Monitor):
     def __init__(self, config):
-        super().__init__()
+        super().__init__(config)  # Pass config to base class
         self.config = config
         self.asset_type = config.asset_type
-        self.subject = f'{self.config.subject_prefix}【{datetime.now().strftime(u"%Y{0}%m{1}%d{2}").format(*"年月日")}】'
 
     def filter_sort(self):
         now = datetime.now()
@@ -144,7 +121,7 @@ class MonitorWithCriteriaTestCase:
         # For all asset types, we need to establish a price change to trigger trading
         self.monitor.success = [asset]
         self.monitor.filter_sort()  # First run establishes snapshot
-        
+
         # Change the worth to trigger trading detection
         # Since current_price is now a property that returns worth[-1],
         # we modify the worth array to simulate a price change
@@ -234,7 +211,7 @@ class MonitorWithCriteriaTestCase:
         """Test trading detection logic for all asset types."""
         # Create the asset for this test
         asset = self.create_asset()
-        
+
         # Create a snapshot file with a different price to trigger trading
         snapshot_data = {
             asset.code: {
@@ -246,25 +223,62 @@ class MonitorWithCriteriaTestCase:
                 'trading': False
             }
         }
-        
+
         # Write snapshot to file
         import json
         with open(self.config.snapshot_file, 'w', encoding='utf-8') as f:
             json.dump(snapshot_data, f)
-        
+
         # Set current price through worth (since current_price is now a property)
         asset.worth = [105.0]  # Different from snapshot price (100.0)
-        
+
         # Set up the monitor with this asset
         self.monitor.success = [asset]
-        
+
         # Run filter_sort which handles trading detection
         results = self.monitor.filter_sort()
-        
+
         # Verify trading was detected due to price change
         self.assertTrue(asset.trading, f"Trading should be True when price changes from 100.0 to {asset.current_price}")
         # The result should contain the asset since trading was detected
         # (assuming the asset meets other criteria)
+
+    def test_daily_change_formatting(self):
+        """Test that daily change percentage is displayed when above threshold"""
+        asset = self.create_asset()
+
+        # Set up asset with significant daily change
+        asset.worth = [100.0, 115.0]  # 15% increase
+        asset.N = 5
+        asset.cur = 0.05
+
+        # Test formatting with daily change threshold of 10% - should show change
+        formatted_with_change = asset.format_with_config(
+            low_threshold=self.config.low_threshold,
+            drawdown_threshold=self.config.drawdown_threshold,
+            daily_change_threshold=0.10  # 10% threshold
+        )
+        self.assertIn('+15.0%⬆️', formatted_with_change)
+
+        # Test formatting with daily change threshold of 20% - should NOT show change
+        formatted_without_change = asset.format_with_config(
+            low_threshold=self.config.low_threshold,
+            drawdown_threshold=self.config.drawdown_threshold,
+            daily_change_threshold=0.20  # 20% threshold
+        )
+        self.assertNotIn('⬆️', formatted_without_change)
+        self.assertNotIn('⬇️', formatted_without_change)
+
+        # Test negative daily change
+        asset.worth = [100.0, 85.0]  # -15% decrease
+        asset.N = -50
+
+        formatted_negative = asset.format_with_config(
+            low_threshold=self.config.low_threshold,
+            drawdown_threshold=self.config.drawdown_threshold,
+            daily_change_threshold=0.10  # 10% threshold
+        )
+        self.assertIn('-15.0%⬇️', formatted_negative)
 
 
 class TestStockMonitor(MonitorWithCriteriaTestCase, unittest.TestCase):
@@ -272,7 +286,7 @@ class TestStockMonitor(MonitorWithCriteriaTestCase, unittest.TestCase):
 
     def setUp(self):
         super().setUp()
-        
+
         asset_type = 'stock'
         self.asset_type = asset_type
         self.config = MonitorConfig(
@@ -298,7 +312,7 @@ class TestCryptoMonitor(MonitorWithCriteriaTestCase, unittest.TestCase):
 
     def setUp(self):
         super().setUp()
-        
+
         asset_type = 'crypto'
         self.asset_type = asset_type
         self.config = MonitorConfig(

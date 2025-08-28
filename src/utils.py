@@ -63,7 +63,7 @@ class TestUtils(unittest.TestCase):
 
         # print(result_without_head)
         # print(result_with_head)
-        
+
         # Basic assertions to verify the function works
         self.assertIn('<table', result_without_head)
         self.assertIn('<table', result_with_head)

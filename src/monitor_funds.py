@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 from monitor import Monitor
+from monitor_config import MonitorConfig
 from fund import Fund
 
 
@@ -8,7 +9,19 @@ def main(codes):
     codes是所关注的基金代码的列表。
     测试：`TEST=1 python monitor_funds.py`
     '''
-    Monitor().process([Fund(c) for c in codes])
+    # Create a config for fund monitoring
+    config = MonitorConfig(
+        asset_type='fund',  # Used for identification
+        subject_prefix='基金小作手',  # Used in email subject
+        snapshot_file='fund_snapshot.json',  # Not used - funds don't use snapshot-based trading detection
+        notification_days=1,  # Not used - funds don't use notification deduplication
+        low_threshold=-300,  # Used in formatting - traditional fund threshold
+        high_threshold=300,  # Not used - funds use basic filter_sort() 
+        drawdown_threshold=0.2,  # Used in formatting - 20% drawdown threshold
+        daily_change_threshold=0.1  # Used in formatting - 5% daily change display threshold
+    )
+
+    Monitor(config).process([Fund(c) for c in codes])
 
 
 if __name__ == '__main__':

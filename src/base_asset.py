@@ -20,31 +20,51 @@ class BaseAsset(ABC):
         return self.worth[-1] if self.worth else None
 
     def __str__(self):
+        """Default string representation with hardcoded thresholds for backward compatibility"""
+        return self.format_with_config()
+
+    def format_with_config(self, low_threshold=-300, drawdown_threshold=0.2, daily_change_threshold=0.1):
+        """Format asset string with configurable thresholds"""
         k = '{0}({1})'.format(self.name, self.code)
         v = str(self.N)
+
         # return MAX when it reaches the highest in history
         if self.N == len(self.worth) - 1:
             v = 'MAX' # 历史最高点
         elif self.N == -(len(self.worth) - 1):
             v = 'MIN' # 历史最低点
+
         # 创历史新高后下跌则减仓
         # Circled Letter Symbols from https://altcodeunicode.com/alt-codes-circled-number-letter-symbols-enclosed-alphanumerics/
         if len(self.worth) >= 2 and max(self.worth) == self.worth[-2]:
             v += '🅢' # sell
-        # 下跌到过去300个交易日的谷底时加仓
-        # ***这里用了一个hardcoded的经验值***
-        if self.N <= -300:
+
+        # 下跌到过去N个交易日的谷底时加仓 (using configurable threshold)
+        if self.N <= low_threshold:
             v += '🅑'
 
         # 最大回撤
         now = self.cur > 0 and self.cur == self.mdd
-        # 当前出现历史最大或较大(>20%)的回撤
-        if now or self.cur > 0.2:
+        # 当前出现历史最大或较大回撤 (using configurable threshold)
+        if now or self.cur > drawdown_threshold:
             if v[-1].isdigit():
                 v += ','
             v += '{:.0f}%'.format(100*self.cur)
         if now:
             v += '🅜'
+
+        # Add daily change percentage if it's above the threshold
+        if len(self.worth) >= 2:
+            prev_close = self.worth[-2]
+            if prev_close:  # avoid division by zero
+                daily_change = (self.worth[-1] - prev_close) / prev_close
+                if abs(daily_change) >= daily_change_threshold:
+                    if v[-1].isdigit():
+                        v += ','
+                    # Use different symbols for rise and drop
+                    symbol = '⬆️' if daily_change >= 0 else '⬇️'
+                    v += '{:+.1f}%{}'.format(100*daily_change, symbol)
+
         return '{0}:{1}'.format(k, v)
 
     def buy_or_sell(self, worth):

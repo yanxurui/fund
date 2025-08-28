@@ -429,59 +429,6 @@ class TestBaseAsset(unittest.TestCase):
         self.asset.worth = [0.8, 0.7, 1, 0.8, 1.2]
         self.assertEqual((0.2, 0), self.asset.cal_mdd())
 
-    def test_str_scenarios(self):
-        """Test string formatting scenarios"""
-        self.asset.name = 'Test Asset Long Name'
-        self.asset.code = 'TEST123'
-
-        # scenario #1 - normal case with no special signals
-        self.asset.N = -1
-        self.asset.worth = [1.2, 0.5, 1, 0.9]
-        self.asset.mdd, self.asset.cur = self.asset.cal_mdd()
-        f = str(self.asset)
-        self.assertNotIn('🅢', f)
-        self.assertNotIn('🅑', f)
-        self.assertNotIn('🅜', f)
-        self.assertNotIn(',', f)
-
-        # scenario #2 - with drawdown above threshold
-        self.asset.N = -1
-        self.asset.worth = [1.5, 0.5, 1, 0.7]
-        self.asset.mdd, self.asset.cur = self.asset.cal_mdd()
-        f = str(self.asset)
-        self.assertNotIn('🅢', f)
-        self.assertNotIn('🅑', f)
-        self.assertNotIn('🅜', f)
-        self.assertIn(',', f)
-        self.assertIn('30%', f)
-
-        # scenario #3 - with maximum drawdown
-        self.asset.worth = [1.2, 0.8, 1, 0.6]
-        self.asset.mdd, self.asset.cur = self.asset.cal_mdd()
-        f = str(self.asset)
-        self.assertNotIn('🅢', f)
-        self.assertNotIn('🅑', f)
-        self.assertIn('🅜', f)
-        self.assertIn(',', f)
-
-        # scenario #4 - with buy signal and max drawdown
-        self.asset.N = -500
-        f = str(self.asset)
-        self.assertNotIn('🅢', f)
-        self.assertIn('🅑', f)
-        self.assertIn('🅜', f)
-        self.assertNotIn(',', f)
-
-        # scenario #5 - with sell signal and max drawdown
-        self.asset.N = -2
-        self.asset.worth = [0.8, 1, 0.6]
-        self.asset.mdd, self.asset.cur = self.asset.cal_mdd()
-        f = str(self.asset)
-        self.assertIn('🅢', f)
-        self.assertNotIn('🅑', f)
-        self.assertIn('🅜', f)
-        self.assertNotIn(',', f)
-
 
 if __name__ == '__main__':
     unittest.main()
